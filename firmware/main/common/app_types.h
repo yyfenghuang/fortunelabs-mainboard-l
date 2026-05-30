@@ -1,16 +1,29 @@
+/**
+ * @brief Shared application types and global queue handles.
+ *
+ * This file is the "glue" between tasks. Every task includes this
+ * to know the shape of data flowing through queues and which
+ * queues exist.
+ *
+ * sensor_reading_t is defined in hal/sensor_driver.h (single source
+ * of truth) and re-exported here for convenience.
+ */
 #pragma once
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "hal/sensor_driver.h"
 
-// The data that stream on queue
-typedef struct
+#ifdef __cplusplus
+extern "C"
 {
-    float voltage;         // range 0,0 - 3V3, from ADC
-    uint32_t timestamp_ms; // ms from boot
-} sensor_reading_t;
+#endif
 
-// Queue handler
-// Defined in main.c
-extern QueueHandle_t g_queue_display;
-extern QueueHandle_t g_queue_actuator;
+    /* Queue handles, created in main.c */
+    extern QueueHandle_t g_queue_display;
+    extern QueueHandle_t g_queue_actuator;
+    extern QueueHandle_t g_queue_comm;
+
+#ifdef __cplusplus
+}
+#endif
