@@ -2,7 +2,7 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "esp_log.h"
-#include "app_types.h"
+#include "common/app_types.h"
 #include "read_sensor.h"
 
 static const char *TAG = "sensor";

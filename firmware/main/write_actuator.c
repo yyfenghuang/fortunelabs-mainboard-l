@@ -3,7 +3,7 @@
 #include "freertos/queue.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
-#include "app_types.h"
+#include "common/app_types.h"
 #include "write_actuator.h"
 
 static const char *TAG = "actuator";

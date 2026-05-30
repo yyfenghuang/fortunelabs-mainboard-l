@@ -4,7 +4,7 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 
-#include "app_types.h"
+#include "common/app_types.h"
 #include "read_sensor.h"
 #include "write_display.h"
 #include "write_actuator.h"

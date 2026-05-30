@@ -3,7 +3,7 @@
 #include "freertos/queue.h"
 #include "esp_log.h"
 #include "ssd1306.h"
-#include "app_types.h"
+#include "common/app_types.h"
 #include "write_display.h"
 #include <string.h>
 

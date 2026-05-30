@@ -4,6 +4,18 @@ idf_component_register(
         "read_sensor.c"
         "write_display.c"
         "write_actuator.c"
-    INCLUDE_DIRS "."
-    REQUIRES ssd1306 nvs_flash driver esp_adc
+        # "comm.c"
+        "bus/i2c_bus.c"
+    INCLUDE_DIRS 
+    "."
+    ".."
+    REQUIRES
+        ssd1306
+        nvs_flash
+        driver
+        esp_adc
+        esp_wifi
+        esp_event
+        esp_netif
+        mqtt
 )
