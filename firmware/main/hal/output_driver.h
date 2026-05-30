@@ -28,10 +28,10 @@ extern "C"
     //* Output Configuration
     typedef struct
     {
-        i2c_bus_t *bus; /*Shared I2C bus (might null if use default ESP3 2 GPIO)*/
-        uint8_t i2c_addr;
-        uint8_t num_channels;
-        void *extra;
+        i2c_bus_t *bus;       /*Shared I2C bus (might null if use default ESP3 2 GPIO)*/
+        uint8_t i2c_addr;     // Example 0x20 for MCP23017
+        uint8_t num_channels; // Num of output that driver can manage
+        void *extra;          // Driver extended config
     } output_config_t;
 
     //* Driver Interface (vTable)
@@ -45,6 +45,13 @@ extern "C"
         // Set single channel ON (true) || OFF (false)
         esp_err_t (*set)(uint8_t channel, bool state);
         // Read back the current state
-        esp_err_t (*get)()
-    };
+        esp_err_t (*get)(uint8_t channel, bool *state);
+        // Set all channel via bitmask
+        esp_err_t (*set_all)(uint8_t bitmask); // Bit 0 = channel 0
+        // Release resource (optional, NULLable)
+        void (*deinit)(void);
+    } output_driver_t;
+
+#ifdef __cplusplus
 }
+#endif
