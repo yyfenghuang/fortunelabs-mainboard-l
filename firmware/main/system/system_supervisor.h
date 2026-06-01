@@ -28,7 +28,7 @@ extern "C"
 
 // Internal sizing
 #define SYSTEM_SUP_DEVICE_ID_MAX 32
-#define SYSTEM_SUP_HEARTBEAT 160
+#define SYSTEM_SUP_HEARTBEAT_MAX 160
 
     //* Heartbeat publish callback
     /**
@@ -61,7 +61,7 @@ extern "C"
         uint32_t heartbeat_period_ms;
         sys_health_publish_fn publish;
         const char *device_id;
-    } sys_supervisor_config_t;
+    } system_supervisor_config_t;
 
     //* Lifecycle
     /**
@@ -73,7 +73,7 @@ extern "C"
      * @return - ESP_ERR_INVALID_ARG: cfg is NULL or wdt_timeout_ms is zero.
      * @return - Specific esp_err_t: TWDT init/reconfigure failure.
      */
-    esp_err_t sys_supervisor_init(const sys_supervisor_config_t *cfg);
+    esp_err_t system_supervisor_init(const system_supervisor_config_t *cfg);
 
     //* Per-task watchdog membership
     /**
@@ -82,21 +82,21 @@ extern "C"
      * @return - ESP_OK: Calling task is now watched.
      * @return - Specific esp_err_t: TWDT subscription failure (e.g. not initialized).
      */
-    esp_err_t sys_supervisor_task_register(void);
+    esp_err_t system_supervisor_task_register(void);
     /**
      * @brief Feed (reset) the wathcdog for the calling task
      *
      * @return - ESP_OK: Watchdog reset for the calling task.
      * @return - Specific esp_err_t: Calling task is not subscribed.
      */
-    esp_err_t sys_supervisor_task_feed(void);
+    esp_err_t system_supervisor_task_feed(void);
     /**
      * @brief Unsubscribe the calling task from watchdog
      *
      * @return - ESP_OK: calling task removed from monitoring
      * @return - Specific esp_err_t: Calling task was not subscribed.
      */
-    esp_err_t sys_supervisor_task_unregister(void);
+    esp_err_t system_supervisor_task_unregister(void);
 
     //* Supervisor task
     /**
@@ -107,4 +107,7 @@ extern "C"
      * @return void : This task doen't return
      */
     void task_supervisor(void *pvParameters);
+
+#ifdef __cplusplus
 }
+#endif
