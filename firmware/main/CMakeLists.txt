@@ -8,7 +8,8 @@ idf_component_register(
         "bus/i2c_bus.c"
         "system/system_config.c"
         "system/system_log.c"   
-        # "system/system_supervisor.c"
+        "system/system_supervisor.c"
+        "system/system_ota.c"
     INCLUDE_DIRS 
     "."
     ".."

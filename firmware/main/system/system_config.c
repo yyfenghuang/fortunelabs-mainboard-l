@@ -101,7 +101,7 @@ esp_err_t system_config_set_wifi(const char *ssid, const char *pass)
         return ESP_ERR_INVALID_STATE;
     if (ssid == NULL || strlen(ssid) >= SYSTEM_CFG_SSID_LEN)
         return ESP_ERR_INVALID_ARG;
-    if (pass != NULL & strlen(pass) >= SYSTEM_CFG_PASS_LEN)
+    if (pass != NULL && strlen(pass) >= SYSTEM_CFG_PASS_LEN)
         return ESP_ERR_INVALID_ARG;
 
     esp_err_t ret = nvs_set_str(s_handle, KEY_WIFI_SSID, ssid);
