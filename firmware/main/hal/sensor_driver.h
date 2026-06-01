@@ -1,5 +1,5 @@
 /**
- * Any sensor eg.potentiometer, ADS1115, SHT31, MQ-137, or future
+ * @brief Any sensor eg.potentiometer, ADS1115, SHT31, MQ-137, or future
  * daughter board sensors implements this interface.
  *
  * The task layer (task_sensor.c) only depends on this contract,

@@ -1,11 +1,14 @@
 idf_component_register(
     SRCS
         "main.c"
-        "read_sensor.c"
-        "write_display.c"
-        "write_actuator.c"
+        # "read_sensor.c"
+        # "write_display.c"
+        # "write_actuator.c"
         # "comm.c"
         "bus/i2c_bus.c"
+        "system/system_config.c"
+        "system/system_log.c"   
+        # "system/system_supervisor.c"
     INCLUDE_DIRS 
     "."
     ".."

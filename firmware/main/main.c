@@ -5,9 +5,6 @@
 #include "nvs_flash.h"
 
 #include "common/app_types.h"
-#include "read_sensor.h"
-#include "write_display.h"
-#include "write_actuator.h"
 
 static const char *TAG = "main";
 
