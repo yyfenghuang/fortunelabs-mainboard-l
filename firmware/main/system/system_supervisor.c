@@ -51,7 +51,7 @@ esp_err_t system_supervisor_init(const system_supervisor_config_t *cfg)
     // The system may started TWDT already
     esp_err_t ret = esp_task_wdt_init(&twdt_cfg);
     if (ret == ESP_ERR_INVALID_STATE)
-        ret == esp_task_wdt_reconfigure(&twdt_cfg);
+        ret = esp_task_wdt_reconfigure(&twdt_cfg);
 
     if (ret != ESP_OK)
     {
@@ -105,12 +105,12 @@ void task_supervisor(void *pvParameters)
     if (tick_ms == 0 || tick_ms > s_cfg.heartbeat_period_ms)
         tick_ms = s_cfg.heartbeat_period_ms;
     if (tick_ms == 0)
-        tick_ms == 1000;
+        tick_ms = 1000;
 
     char json[SYSTEM_SUP_HEARTBEAT_MAX];
     uint32_t since_publish_ms = s_cfg.heartbeat_period_ms; // publish on first loop
 
-    ESP_LOGI(TAG, "Heartbreak task started (feed every %lums)", (unsigned long)tick_ms);
+    ESP_LOGI(TAG, "Heartbeat task started (feed every %lums)", (unsigned long)tick_ms);
 
     while (1)
     {
