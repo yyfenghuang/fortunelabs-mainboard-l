@@ -17,8 +17,8 @@ extern "C"
 #endif
 
 //* Forwarder buffer sizing
-#define SYS_LOG_LINE_MAX 160   // per-line buffer
-#define SYS_LOG_QUEUE_DEPTH 16 // pueued lines before drop-on-full
+#define SYSTEM_LOG_LINE_MAX 160   // per-line buffer
+#define SYSTEM_LOG_QUEUE_DEPTH 16 // pueued lines before drop-on-full
 
     //* Log sink callback
     /** @brief Callback invoked for each formatted log line, for forwarding to
@@ -29,7 +29,7 @@ extern "C"
      *
      * @return - void: This callback does not return a value.
      */
-    typedef void (*sys_log_sink_fn)(const char *line, size_t len);
+    typedef void (*system_log_sink_fn)(const char *line, size_t len);
 
     //* Logging Lifecycle
     /**
@@ -41,7 +41,7 @@ extern "C"
      * @return - ESP_OK: Logging facade ready.
      * @return - ESP_ERR_NO_MEM: Queue or forwarder task allocation failed.
      */
-    esp_err_t sys_log_init(esp_log_level_t default_level);
+    esp_err_t system_log_init(esp_log_level_t default_level);
 
     //* Level Control
     /**
@@ -53,7 +53,7 @@ extern "C"
      *
      * @return - void: This function does not return a value.
      */
-    void sys_log_set_level(const char *tag, esp_log_level_t level);
+    void system_log_set_level(const char *tag, esp_log_level_t level);
 
     //* Sink management
     /**
@@ -64,14 +64,14 @@ extern "C"
      * @return - ESP_OK: Sink registered; forwarding active.
      * @return - ESP_ERR_INVALID_STATE: sys_log_init() was not called first.
      */
-    esp_err_t sys_log_register_sink(sys_log_sink_fn sink);
+    esp_err_t system_log_register_sink(system_log_sink_fn sink);
 
     /**
      * @brief Stop forwarding to the remote sink. Serial output is unaffected.
      *
      * @return void: This function does not return a value.
      */
-    void sys_log_unregister_sink(void);
+    void system_log_unregister_sink(void);
 
 #ifdef __cplusplus
 }

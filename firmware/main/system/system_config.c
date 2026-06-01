@@ -57,7 +57,7 @@ static void derive_device_id(char *out, size_t out_sz)
 
 //* Lifecycle
 
-esp_err_t sys_config_init(void)
+esp_err_t system_config_init(void)
 {
     esp_err_t ret = nvs_open(CFG_NAMESPACE, NVS_READWRITE, &s_handle);
     if (ret != ESP_OK)
@@ -71,7 +71,7 @@ esp_err_t sys_config_init(void)
     return ESP_OK;
 }
 
-esp_err_t sys_config_load(sys_config_t *out)
+esp_err_t system_config_load(sys_config_t *out)
 {
     if (out == NULL)
         return ESP_ERR_INVALID_ARG;
@@ -95,13 +95,13 @@ esp_err_t sys_config_load(sys_config_t *out)
 
 //* Runtime provisioning
 
-esp_err_t sys_config_set_wifi(const char *ssid, const char *pass)
+esp_err_t system_config_set_wifi(const char *ssid, const char *pass)
 {
     if (!s_initialized)
         return ESP_ERR_INVALID_STATE;
-    if (ssid == NULL || strlen(ssid) >= SYS_CFG_SSID_LEN)
+    if (ssid == NULL || strlen(ssid) >= SYSTEM_CFG_SSID_LEN)
         return ESP_ERR_INVALID_ARG;
-    if (pass != NULL & strlen(pass) >= SYS_CFG_PASS_LEN)
+    if (pass != NULL & strlen(pass) >= SYSTEM_CFG_PASS_LEN)
         return ESP_ERR_INVALID_ARG;
 
     esp_err_t ret = nvs_set_str(s_handle, KEY_WIFI_SSID, ssid);
@@ -118,11 +118,11 @@ esp_err_t sys_config_set_wifi(const char *ssid, const char *pass)
     return ret;
 }
 
-esp_err_t sys_config_set_broker(const char *uri)
+esp_err_t system_config_set_broker(const char *uri)
 {
     if (!s_initialized)
         return ESP_ERR_INVALID_STATE;
-    if (uri == NULL || strlen(uri) >= SYS_CFG_URI_LEN)
+    if (uri == NULL || strlen(uri) >= SYSTEM_CFG_URI_LEN)
         return ESP_ERR_INVALID_ARG;
 
     esp_err_t ret = nvs_set_str(s_handle, KEY_BROKER_URI, uri);
@@ -135,7 +135,7 @@ esp_err_t sys_config_set_broker(const char *uri)
     return ret;
 }
 
-esp_err_t sys_config_get_device_id(char *buf, size_t len)
+esp_err_t system_config_get_device_id(char *buf, size_t len)
 {
     if (buf == NULL || len == 0)
         return ESP_ERR_INVALID_ARG;
@@ -148,7 +148,7 @@ esp_err_t sys_config_get_device_id(char *buf, size_t len)
     return ret;
 }
 
-esp_err_t sys_config_reset(void)
+esp_err_t system_config_reset(void)
 {
     if (!s_initialized)
         return ESP_ERR_INVALID_STATE;

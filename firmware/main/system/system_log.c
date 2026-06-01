@@ -11,14 +11,14 @@ static const char *TAG = "system_log";
 // One queued log line
 typedef struct
 {
-    char buf[SYS_LOG_LINE_MAX];
+    char buf[SYSTEM_LOG_LINE_MAX];
     size_t len;
 } log_line_t;
 
 static QueueHandle_t s_queue = NULL;
-static vprintf_like_t s_orig_vprintf = NULL;   // default UART driver
-static volatile sys_log_sink_fn s_sink = NULL; // remote sink
-static volatile bool s_forwarding = false;     // recursion guard
+static vprintf_like_t s_orig_vprintf = NULL;      // default UART driver
+static volatile system_log_sink_fn s_sink = NULL; // remote sink
+static volatile bool s_forwarding = false;        // recursion guard
 static bool s_initialized = false;
 
 //* Internal
@@ -58,7 +58,7 @@ static void task_log_forwarder(void *pvParameters)
     {
         if (xQueueReceive(s_queue, &line, portMAX_DELAY) == pdTRUE)
         {
-            sys_log_sink_fn sink = s_sink;
+            system_log_sink_fn sink = s_sink;
             if (sink != NULL)
             {
                 s_forwarding = true;
@@ -70,11 +70,11 @@ static void task_log_forwarder(void *pvParameters)
 }
 
 //* Logging Lifecycle
-esp_err_t sys_log_init(esp_log_level_t default_level)
+esp_err_t system_log_init(esp_log_level_t default_level)
 {
     esp_log_level_set("*", default_level);
 
-    s_queue = xQueueCreate(SYS_LOG_QUEUE_DEPTH, sizeof(log_line_t));
+    s_queue = xQueueCreate(SYSTEM_LOG_QUEUE_DEPTH, sizeof(log_line_t));
     if (s_queue == NULL)
     {
         ESP_LOGE(TAG, "Failed to create log queue");
@@ -99,13 +99,13 @@ esp_err_t sys_log_init(esp_log_level_t default_level)
 }
 
 //* Level Control
-void sys_log_set_level(const char *tag, esp_log_level_t level)
+void system_log_set_level(const char *tag, esp_log_level_t level)
 {
     esp_log_level_set(tag ? tag : "*", level);
 }
 
 //* Sink Management
-esp_err_t sys_log_register_sink(sys_log_sink_fn sink)
+esp_err_t system_log_register_sink(system_log_sink_fn sink)
 {
     if (!s_initialized)
         return ESP_ERR_INVALID_STATE;
@@ -115,7 +115,7 @@ esp_err_t sys_log_register_sink(sys_log_sink_fn sink)
     return ESP_OK;
 }
 
-void sys_log_unregister_sink(void)
+void system_log_unregister_sink(void)
 {
     s_sink = NULL;
 }

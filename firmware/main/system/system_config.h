@@ -14,10 +14,10 @@ extern "C"
 #endif
 
 //* Field Capacities
-#define SYS_CFG_SSID_LEN 33
-#define SYS_CFG_PASS_LEN 64
-#define SYS_CFG_URI_LEN 128
-#define SYS_CFG_ID_LEN 32
+#define SYSTEM_CFG_SSID_LEN 33
+#define SYSTEM_CFG_PASS_LEN 64
+#define SYSTEM_CFG_URI_LEN 128
+#define SYSTEM_CFG_ID_LEN 32
 
     //* Configuration snapshot
     /**
@@ -32,10 +32,10 @@ extern "C"
      */
     typedef struct
     {
-        char wifi_ssid[SYS_CFG_SSID_LEN];
-        char wifi_pass[SYS_CFG_PASS_LEN];
-        char broker_uri[SYS_CFG_URI_LEN];
-        char device_id[SYS_CFG_ID_LEN];
+        char wifi_ssid[SYSTEM_CFG_SSID_LEN];
+        char wifi_pass[SYSTEM_CFG_PASS_LEN];
+        char broker_uri[SYSTEM_CFG_URI_LEN];
+        char device_id[SYSTEM_CFG_ID_LEN];
     } sys_config_t;
 
     //* System Config Lifecycle
@@ -45,7 +45,7 @@ extern "C"
      * @return - ESP_OK: Namespace opened and store ready.
      * @return - ESP_FAIL / Specific esp_err_t: NVS not initialize
      */
-    esp_err_t sys_config_init(void);
+    esp_err_t system_config_init(void);
     /**
      * @brief Resolve all configuration values into the caller's snapshot.
      *
@@ -54,7 +54,7 @@ extern "C"
      * @return - ESP_ERR_INVALID_STATE: sys_config_init() was not called first.
      * @return - Specific esp_err_t: NVS read failure on a present key.
      */
-    esp_err_t sys_config_load(sys_config_t *out);
+    esp_err_t system_config_load(sys_config_t *out);
 
     //* Runtime Provisioning
     /**
@@ -68,7 +68,7 @@ extern "C"
      * @return - ESP_ERR_INVALID_STATE: store not initialized.
      * @return - Specific esp_err_t: NVS write/commit failure.
      */
-    esp_err_t sys_config_set_wifi(const char *ssid, const char *pass);
+    esp_err_t system_config_set_wifi(const char *ssid, const char *pass);
 
     /**
      * @brief Persist the MQTT broker URI to NVS
@@ -80,7 +80,7 @@ extern "C"
      * @return - ESP_ERR_INVALID_STATE: store not initialized.
      * @return - Specific esp_err_t: NVS write/commit failure.
      */
-    esp_err_t sys_config_set_broker(const char *uri);
+    esp_err_t system_config_set_broker(const char *uri);
 
     /**
      * @brief Copy the resolved devide identifier into the caller's buffer
@@ -92,7 +92,7 @@ extern "C"
      * @return - ESP_ERR_INVALID_ARG: buf is NULL or len is zero.
      * @return - ESP_ERR_INVALID_STATE: store not initialized.
      */
-    esp_err_t sys_config_get_device_id(char *buf, size_t len);
+    esp_err_t system_config_get_device_id(char *buf, size_t len);
 
     /**
      * @brief Erase all stored config, revert to Kconfig defaults
@@ -101,7 +101,7 @@ extern "C"
      * @return - ESP_ERR_INVALID_STATE: store not initialized.
      * @return - Specific esp_err_t: NVS erase/commit failure.
      */
-    esp_err_t sys_config_reset(void);
+    esp_err_t system_config_reset(void);
 
 #ifdef __cplusplus
 }

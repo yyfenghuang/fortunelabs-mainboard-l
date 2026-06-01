@@ -27,8 +27,8 @@ extern "C"
 #endif
 
 // Internal sizing
-#define SYS_SUP_DEVICE_ID_MAX 32
-#define SYS_SUP_HEARTBEAT 160
+#define SYSTEM_SUP_DEVICE_ID_MAX 32
+#define SYSTEM_SUP_HEARTBEAT 160
 
     //* Heartbeat publish callback
     /**
