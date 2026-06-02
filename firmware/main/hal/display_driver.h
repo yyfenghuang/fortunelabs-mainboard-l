@@ -80,4 +80,6 @@ extern "C"
          */
         void (*deinit)(void);
     } display_driver_t;
+#ifdef __cplusplus
 }
+#endif

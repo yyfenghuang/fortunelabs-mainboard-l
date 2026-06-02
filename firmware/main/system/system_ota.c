@@ -7,7 +7,7 @@
 #include "esp_system.h"
 #include <string.h>
 
-static const *TAG = "system_ota";
+static const char *TAG = "system_ota";
 
 #define OTA_DEFAULT_TIMEOUT_MS 1000
 

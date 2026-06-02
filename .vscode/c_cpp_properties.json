@@ -11,12 +11,17 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/firmware/main/**",
                 "${workspaceFolder}/firmware/main/hal",
-                "/home/liora/esp/esp-idf/components/**"
+                "/home/liora/esp/esp-idf/components/**",
+                "${workspaceFolder}/firmware/build/config"
+            ],
+            "defines": [
+                "CONFIG_FREERTOS_HZ=100"
             ],
             "browse": {
                 "path": [
                     "${workspaceFolder}/**",
-                    "/home/liora/esp/esp-idf/components"
+                    "/home/liora/esp/esp-idf/components",
+                    "${workspaceFolder}/firmware/build/config"
                 ],
                 "limitSymbolsToIncludedHeaders": true
             }

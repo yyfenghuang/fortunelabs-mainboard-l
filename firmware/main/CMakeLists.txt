@@ -34,4 +34,6 @@ idf_component_register(
     PRIV_REQUIRES 
         esp_https_ota 
         esp_http_client
+        app_update
+        
 )

@@ -68,7 +68,13 @@ esp_err_t system_supervisor_init(const system_supervisor_config_t *cfg)
     if (cfg->heartbeat_period_ms >= cfg->wdt_timeout_ms)
         ESP_LOGW(TAG, "heartbeat_period (%lums) >= wdt_timeout (%lums); "
                       "supervisor self-feeds at a safe sub-cadence",
-                 (unsigned long)cfg->wdt_timeout_ms, cfg->trigger_panic, (unsigned long)cfg->heartbeat_period_ms);
+                 (unsigned long)cfg->heartbeat_period_ms,
+                 (unsigned long)cfg->wdt_timeout_ms);
+
+    s_initialized = true;
+    ESP_LOGI(TAG, "Supervisor ready (wdt=%lums panic=%d heartbeat=%lums)",
+             (unsigned long)cfg->wdt_timeout_ms, cfg->trigger_panic,
+             (unsigned long)cfg->heartbeat_period_ms);
     return ESP_OK;
 }
 
