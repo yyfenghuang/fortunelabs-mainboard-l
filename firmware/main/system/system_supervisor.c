@@ -16,7 +16,7 @@ static struct
     uint32_t wdt_timeout_ms;
     uint32_t heartbeat_period_ms;
     sys_health_publish_fn publish;
-    char device_id[SYSTEM_SUP_DEVICE_ID_MAX]
+    char device_id[SYSTEM_SUP_DEVICE_ID_MAX];
 } s_cfg;
 
 static bool s_initialized = false;
@@ -29,11 +29,11 @@ static int build_heartbeat(char *buf, size_t buf_sz)
     unsigned long free_heap = (unsigned long)esp_get_free_heap_size();
     unsigned long min_heap = (unsigned long)esp_get_minimum_free_heap_size();
 
-    int len = sprintf(buf, buf_sz, "{\"device_id\":\"%s\",\"uptime_s\":%llu,"
-                                   "\"free_heap\":%lu,\"min_free_heap\":%lu}",
-                      s_cfg.device_id, uptime_s, free_heap, min_heap);
+    int len = snprintf(buf, buf_sz, "{\"device_id\":\"%s\",\"uptime_s\":%llu,"
+                                    "\"free_heap\":%lu,\"min_free_heap\":%lu}",
+                       s_cfg.device_id, uptime_s, free_heap, min_heap);
 
-    return (len > 0 && len < (int)buf_sz) ? len : 1;
+    return (len > 0 && len < (int)buf_sz) ? len : -1;
 }
 
 //* Lifecycle
@@ -95,7 +95,7 @@ void task_supervisor(void *pvParameters)
 {
     (void)pvParameters;
 
-    esp_err_t ret = task_supervisor_task_register();
+    esp_err_t ret = system_supervisor_task_register();
     if (ret != ESP_OK)
         ESP_LOGE(TAG, "Self watchdog register failed: %s", esp_err_to_name(ret));
 

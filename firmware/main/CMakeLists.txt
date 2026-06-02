@@ -22,4 +22,5 @@ idf_component_register(
         esp_event
         esp_netif
         mqtt
+    PRIV_REQUIRES esp_https_ota esp_http_client
 )
