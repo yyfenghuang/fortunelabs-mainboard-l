@@ -17,8 +17,8 @@
 #include "drivers/ic/ssd1306.h"
 
 // Konfigurasi Pin I2C (Sesuaikan dengan pin physical board kamu)
-#define MAIN_I2C_SDA_PIN 21
-#define MAIN_I2C_SCL_PIN 22
+#define MAIN_I2C_SDA_PIN 18
+#define MAIN_I2C_SCL_PIN 19
 #define MAIN_I2C_PORT I2C_NUM_0
 
 static const char *TAG = "main";
@@ -51,7 +51,7 @@ void app_main(void)
         .sda_pin = MAIN_I2C_SDA_PIN,
         .scl_pin = MAIN_I2C_SCL_PIN,
         .port = MAIN_I2C_PORT,
-        .clk_hz = 400000 // 400 kHz Fast Mode
+        .clk_hz = 100000 // 400 kHz Fast Mode
     };
     ESP_LOGI(TAG, "Initializing I2C Master Bus...");
     ESP_ERROR_CHECK(i2c_bus_init(&g_i2c_bus, &bus_cfg));

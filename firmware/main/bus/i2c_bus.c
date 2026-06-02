@@ -29,7 +29,7 @@ esp_err_t i2c_bus_init(i2c_bus_t *bus, const i2c_bus_config_t *cfg)
         .scl_io_num = cfg->scl_pin,
         .sda_io_num = cfg->sda_pin,
         .glitch_ignore_cnt = 7,
-        .flags.enable_internal_pullup = false,
+        .flags.enable_internal_pullup = true, // ! True if doesnt have resistor
     };
 
     esp_err_t ret = i2c_new_master_bus(&bus_cfg, &bus->bus_handle);
