@@ -18,6 +18,11 @@
 extern "C"
 {
 #endif
+    typedef struct
+    {
+        uint8_t row;
+        char text[17]; // 16 Karakter + 1 Null Terminator untuk SSD1306
+    } display_msg_t;
 
     /* Queue handles, created in main.c */
     extern QueueHandle_t g_queue_display;
