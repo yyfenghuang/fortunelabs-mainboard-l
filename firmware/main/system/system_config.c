@@ -71,14 +71,14 @@ esp_err_t system_config_init(void)
     return ESP_OK;
 }
 
-esp_err_t system_config_load(sys_config_t *out)
+esp_err_t system_config_load(system_config_t *out)
 {
     if (out == NULL)
         return ESP_ERR_INVALID_ARG;
     if (!s_initialized)
         return ESP_ERR_INVALID_STATE;
 
-    memset(out, 0, sizeof(sys_config_t));
+    memset(out, 0, sizeof(system_config_t));
 
     load_str(KEY_WIFI_SSID, CONFIG_FLAB_WIFI_SSID, out->wifi_ssid, sizeof(out->wifi_ssid));
     load_str(KEY_WIFI_PASS, CONFIG_FLAB_WIFI_PASS, out->wifi_pass, sizeof(out->wifi_pass));

@@ -36,7 +36,7 @@ extern "C"
         char wifi_pass[SYSTEM_CFG_PASS_LEN];
         char broker_uri[SYSTEM_CFG_URI_LEN];
         char device_id[SYSTEM_CFG_ID_LEN];
-    } sys_config_t;
+    } system_config_t;
 
     //* System Config Lifecycle
     /**
@@ -51,10 +51,10 @@ extern "C"
      *
      * @return - ESP_OK: Snapshot fully populated.
      * @return - ESP_ERR_INVALID_ARG: out is NULL.
-     * @return - ESP_ERR_INVALID_STATE: sys_config_init() was not called first.
+     * @return - ESP_ERR_INVALID_STATE: system_config_init() was not called first.
      * @return - Specific esp_err_t: NVS read failure on a present key.
      */
-    esp_err_t system_config_load(sys_config_t *out);
+    esp_err_t system_config_load(system_config_t *out);
 
     //* Runtime Provisioning
     /**
