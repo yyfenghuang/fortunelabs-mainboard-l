@@ -4,6 +4,8 @@
 #include "esp_mac.h"
 #include "esp_log.h"
 #include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 static const char *TAG = "system_config";
 
@@ -27,6 +29,8 @@ static const char *TAG = "system_config";
 
 static nvs_handle_t s_handle = 0;
 static bool s_initialized = false;
+
+static SemaphoreHandle_t s_mutex = NULL;
 
 //* Internal Helpers
 // Read string key from NVS
@@ -59,6 +63,16 @@ static void derive_device_id(char *out, size_t out_sz)
 
 esp_err_t system_config_init(void)
 {
+    // Mutex first
+    if (s_mutex == NULL)
+    {
+        s_mutex = xSemaphoreCreateMutex();
+        if (s_mutex == NULL)
+        {
+            ESP_LOGE(TAG, "Fail to build Config Mutex (RAM is full)");
+            return ESP_ERR_NO_MEM;
+        }
+    }
     esp_err_t ret = nvs_open(CFG_NAMESPACE, NVS_READWRITE, &s_handle);
     if (ret != ESP_OK)
     {
@@ -78,6 +92,9 @@ esp_err_t system_config_load(system_config_t *out)
     if (!s_initialized)
         return ESP_ERR_INVALID_STATE;
 
+    // Take key, if there current task, wait until finish
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+
     memset(out, 0, sizeof(system_config_t));
 
     load_str(KEY_WIFI_SSID, CONFIG_FLAB_WIFI_SSID, out->wifi_ssid, sizeof(out->wifi_ssid));
@@ -88,6 +105,9 @@ esp_err_t system_config_load(system_config_t *out)
     load_str(KEY_DEVICE_ID, "", out->device_id, sizeof(out->device_id));
     if (out->device_id[0] == '\0')
         derive_device_id(out->device_id, sizeof(out->device_id));
+
+    // Give key to another task
+    xSemaphoreGive(s_mutex);
 
     ESP_LOGI(TAG, "Loaded config: ssid='%s' broker='%s' id='%s'", out->wifi_ssid, out->broker_uri, out->device_id);
     return ESP_OK;
@@ -104,15 +124,26 @@ esp_err_t system_config_set_wifi(const char *ssid, const char *pass)
     if (pass != NULL && strlen(pass) >= SYSTEM_CFG_PASS_LEN)
         return ESP_ERR_INVALID_ARG;
 
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+
     esp_err_t ret = nvs_set_str(s_handle, KEY_WIFI_SSID, ssid);
     if (ret != ESP_OK)
+    {
+        xSemaphoreGive(s_mutex); // dont forget to give key back even unsucsessful!
         return ret;
+    }
 
     ret = nvs_set_str(s_handle, KEY_WIFI_PASS, pass ? pass : "");
     if (ret != ESP_OK)
+    {
+        xSemaphoreGive(s_mutex); // dont forget to give key back even unsucsessful!
         return ret;
+    }
 
-    ret = nvs_commit(s_handle);
+    ret = nvs_commit(s_handle); // save change
+
+    xSemaphoreGive(s_mutex);
+
     if (ret == ESP_OK)
         ESP_LOGI(TAG, "WIFI credentials presisted (ssid='%s')", ssid);
     return ret;
@@ -125,12 +156,20 @@ esp_err_t system_config_set_broker(const char *uri)
     if (uri == NULL || strlen(uri) >= SYSTEM_CFG_URI_LEN)
         return ESP_ERR_INVALID_ARG;
 
-    esp_err_t ret = nvs_set_str(s_handle, KEY_BROKER_URI, uri);
-    if (ret == ESP_OK)
-        return ret;
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
 
-    ret = nvs_commit(s_handle);
+    esp_err_t ret = nvs_set_str(s_handle, KEY_BROKER_URI, uri);
     if (ret != ESP_OK)
+    {
+        xSemaphoreGive(s_mutex);
+        return ret;
+    }
+
+    ret = nvs_commit(s_handle); // save change
+
+    xSemaphoreGive(s_mutex);
+
+    if (ret == ESP_OK)
         ESP_LOGI(TAG, "Broker URI persisted ('%s')", uri);
     return ret;
 }
@@ -142,9 +181,13 @@ esp_err_t system_config_get_device_id(char *buf, size_t len)
     if (!s_initialized)
         return ESP_ERR_INVALID_STATE;
 
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+
     esp_err_t ret = load_str(KEY_DEVICE_ID, "", buf, len);
     if (ret == ESP_OK && buf[0] == '\0')
         derive_device_id(buf, len);
+
+    xSemaphoreGive(s_mutex);
     return ret;
 }
 
@@ -153,14 +196,20 @@ esp_err_t system_config_reset(void)
     if (!s_initialized)
         return ESP_ERR_INVALID_STATE;
 
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+
     esp_err_t ret = nvs_erase_all(s_handle);
     if (ret != ESP_OK)
     {
+        xSemaphoreGive(s_mutex);
         ESP_LOGE(TAG, "nvs_erase_all failed: %s", esp_err_to_name(ret));
         return ret;
     }
 
     ret = nvs_commit(s_handle);
+
+    xSemaphoreGive(s_mutex);
+
     if (ret == ESP_OK)
         ESP_LOGW(TAG, "Config erased — reverting to compile-time defaults");
     return ret;

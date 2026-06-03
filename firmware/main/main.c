@@ -51,7 +51,7 @@ void app_main(void)
         .sda_pin = MAIN_I2C_SDA_PIN,
         .scl_pin = MAIN_I2C_SCL_PIN,
         .port = MAIN_I2C_PORT,
-        .clk_hz = 100000 // 400 kHz Fast Mode
+        .clk_hz = 100000 // 100 kHz Fast Mode
     };
     ESP_LOGI(TAG, "Initializing I2C Master Bus...");
     ESP_ERROR_CHECK(i2c_bus_init(&g_i2c_bus, &bus_cfg));
