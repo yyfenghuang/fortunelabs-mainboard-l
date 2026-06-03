@@ -130,7 +130,7 @@ esp_err_t system_config_set_broker(const char *uri)
         return ret;
 
     ret = nvs_commit(s_handle);
-    if (ret == ESP_OK)
+    if (ret != ESP_OK)
         ESP_LOGI(TAG, "Broker URI persisted ('%s')", uri);
     return ret;
 }
