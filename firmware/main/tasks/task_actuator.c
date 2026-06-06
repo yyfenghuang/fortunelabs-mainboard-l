@@ -19,10 +19,10 @@ void task_actuator(void *pvParameters)
 
     while (1)
     {
-        // Memblokir diri (0% CPU) sampai ada data baru masuk ke queue
+        // Block until a new command is received to change the LED state
         if (xQueueReceive(g_queue_actuator, &target_led_state, portMAX_DELAY) == pdTRUE)
         {
-            // Jalankan driver output untuk menyalakan/mematikan LED via channel 0
+            // Run the actuator driver to set the LED state accordingly
             actuator_dummy_driver.set(0, target_led_state);
             ESP_LOGD(TAG, "Hardware LED synchronized to: %s", target_led_state ? "ON" : "OFF");
         }

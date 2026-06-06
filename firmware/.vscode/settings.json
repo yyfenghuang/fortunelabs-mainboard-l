@@ -1,0 +1,48 @@
+{
+    // --- 1. TEMA & PALETTE MANUAL (ATOM ONE DARK) ---
+    "workbench.colorTheme": "One Dark Pro", 
+    "workbench.colorCustomizations": {
+        "editor.background": "#21252b",
+        "sideBar.background": "#1e2227",
+        "sideBar.foreground": "#abb2bf",
+        "activityBar.background": "#1e2227",
+        "activityBar.foreground": "#528bff",
+        "titleBar.activeBackground": "#1e2227",
+        "titleBar.activeForeground": "#abb2bf",
+        "statusBar.background": "#21252b",
+        "statusBar.foreground": "#9da5b4",
+        "editorLineNumber.foreground": "#4b5263",
+        "editorLineNumber.activeForeground": "#c8ccd4"
+    },
+
+    // --- 2. CONFIG INTELLISENSE C/C++ (JALUR FIX) ---
+    "C_Cpp.default.compileCommands": "/home/fenghuang/workspace/fortunelabs-mainboard-l/firmware/build/compile_commands.json",
+    "C_Cpp.default.compilerPath": "/home/fenghuang/.espressif/tools/xtensa-esp-elf/esp-13.2.0_20240530/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc",
+    "C_Cpp.default.cStandard": "c11",
+    "C_Cpp.default.cppStandard": "c++17",
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/**",                  // Berubah jadi /** karena root-nya sudah di dalam firmware
+        "/home/fenghuang/esp/esp-idf/components/**"
+    ],
+    "C_Cpp.default.browse.path": [
+        "${workspaceFolder}/**",
+        "/home/fenghuang/esp/esp-idf/components"
+    ],
+
+    // --- 3. FONTS, KURSOR & COMFORT ERGONOMICS ---
+    "editor.fontFamily": "'JetBrains Mono', 'DejaVu Sans Mono', monospace",
+    "editor.fontSize": 14,
+    "editor.lineHeight": 24,
+    "editor.fontLigatures": true,
+    "editor.cursorStyle": "line",
+    "editor.cursorBlinking": "phase",
+    "editor.cursorWidth": 3,
+    "editor.cursorSmoothCaretAnimation": "on",
+    "editor.minimap.enabled": false,
+    "editor.guides.bracketPairs": "active",
+    "editor.renderLineHighlight": "all",
+    "editor.wordWrap": "on",
+    "workbench.iconTheme": "a-file-icon-vscode",
+    "telemetry.telemetryLevel": "off",
+    "idf.currentSetup": "/home/fenghuang/esp/esp-idf"
+}
