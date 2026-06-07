@@ -187,6 +187,16 @@ esp_err_t network_manager_init(const system_config_t *cfg){
         .broker.address.uri = s_network_cfg.broker_uri,
         .session.disable_clean_session = false,
         .network.reconnect_timeout_ms = 5000, // Reconnect after 5s if connection is lost
+        .session.keepalive = 15, // in seconds
+
+        // LWT feature to notify broker if device goes offline unexpectedly
+        .session.last_will = {
+            .topic = s_topic_health, // Publish to health topic
+            .msg = "{\"status\":\"OFFLINE UNEXPECTED\"}", 
+            .msg_len = 0, // auto calculate length from null-terminated string
+            .qos = 1, // QoS 1 to ensure delivery of LWT message
+            .retain = 1 // Retain 1 so that broker holds the last known status of the device for new subscribers
+        }
     };
 
     s_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
