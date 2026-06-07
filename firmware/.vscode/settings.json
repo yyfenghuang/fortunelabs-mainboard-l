@@ -1,18 +1,62 @@
 {
-    // --- 1. TEMA & PALETTE MANUAL (ATOM ONE DARK) ---
-    "workbench.colorTheme": "One Dark Pro", 
+    // --- 1. TEMA & PALETTE MANUAL (ATOM ONE DARK - SEGER & PASTEL TWEAK) ---
+    "workbench.colorTheme": "One Dark Pro Darker", 
     "workbench.colorCustomizations": {
+        // Base Background & Sidebar asli milikmu
         "editor.background": "#21252b",
         "sideBar.background": "#1e2227",
         "sideBar.foreground": "#abb2bf",
         "activityBar.background": "#1e2227",
-        "activityBar.foreground": "#528bff",
         "titleBar.activeBackground": "#1e2227",
         "titleBar.activeForeground": "#abb2bf",
         "statusBar.background": "#21252b",
         "statusBar.foreground": "#9da5b4",
         "editorLineNumber.foreground": "#4b5263",
-        "editorLineNumber.activeForeground": "#c8ccd4"
+
+        // Tweak UI Pastel (Pink, Blue, Cyan)
+        "activityBar.foreground": "#e8a7cf",             // Pastel Pink untuk icon bar samping
+        "editorLineNumber.activeForeground": "#9cc2ff",    // Pastel Blue untuk nomor baris aktif
+        "tab.activeBorder": "#e8a7cf",                    // Garis bawah tab aktif (Pastel Pink)
+        "tab.activeForeground": "#e8a7cf",                // Teks tab aktif
+        "activityBarBadge.background": "#a1e5df",         // Badge notifikasi/ekstensi (Pastel Cyan/Mint)
+        "activityBarBadge.foreground": "#1e2227",
+        "list.activeSelectionForeground": "#a1e5df",       // Teks file yang dipilih di sidebar
+        "list.highlightForeground": "#a1e5df",             // Highlight pencarian file
+        "list.hoverBackground": "#2c313c",
+        "focusBorder": "#9cc2ff"                           // Border fokus (Pastel Blue)
+    },
+
+    // Mewarnai syntax kodingan (C/C++, dll) dengan tema pastel senada
+    "editor.tokenColorCustomizations": {
+        "[One Dark Pro Darker]": {
+            "textMateRules": [
+                {
+                    // Keywords (if, return, case, struct, class, dll) -> Pastel Pink
+                    "scope": ["keyword", "storage.type", "storage.modifier"],
+                    "settings": { "foreground": "#e8a7cf" }
+                },
+                {
+                    // Functions & Methods -> Pastel Blue
+                    "scope": ["entity.name.function", "support.function", "variable.function"],
+                    "settings": { "foreground": "#9cc2ff" }
+                },
+                {
+                    // Strings (Teks teks di dalam kutip) -> Pastel Green (seger tapi soft)
+                    "scope": ["string", "string.template"],
+                    "settings": { "foreground": "#b3e6b5" }
+                },
+                {
+                    // Macros, Types, & Constants (#define, int, uint8_t, dll) -> Pastel Cyan
+                    "scope": ["entity.name.type", "support.type", "constant.numeric", "constant.language", "meta.preprocessor"],
+                    "settings": { "foreground": "#a1e5df" }
+                },
+                {
+                    // Comments -> Muted Slate Green (Biar kontrasnya pas di mata)
+                    "scope": ["comment", "punctuation.definition.comment"],
+                    "settings": { "foreground": "#63757a", "fontStyle": "italic" }
+                }
+            ]
+        }
     },
 
     // --- 2. CONFIG INTELLISENSE C/C++ (JALUR FIX) ---
@@ -32,7 +76,7 @@
     // --- 3. FONTS, KURSOR & COMFORT ERGONOMICS ---
     "editor.fontFamily": "'JetBrains Mono', 'DejaVu Sans Mono', monospace",
     "editor.fontSize": 14,
-    "editor.lineHeight": 24,
+    "editor.lineHeight": 18,
     "editor.fontLigatures": true,
     "editor.cursorStyle": "line",
     "editor.cursorBlinking": "phase",

@@ -1,3 +1,5 @@
+# main/CMakeLists.txt
+
 idf_component_register(
     SRCS
         "main.c"
@@ -17,12 +19,15 @@ idf_component_register(
         "drivers/output/actuator_dummy.c"
         "drivers/ic/ssd1306.c"
 
+        # --- Network & Communication ---
+        "network/network_manager.c"
+
     INCLUDE_DIRS 
         "."
         ".."
         
-    REQUIRES
-        # ssd1306 <-- Di-comment karena kita sudah pakai driver native di drivers/ic/ssd1306.c
+    PRIV_REQUIRES 
+        # --- Core ESP-IDF Network & Storage Components ---
         nvs_flash
         driver
         esp_adc
@@ -30,10 +35,10 @@ idf_component_register(
         esp_event
         esp_netif
         mqtt
+        lwip
         
-    PRIV_REQUIRES 
+        # --- OTA & HTTP Components ---
         esp_https_ota 
         esp_http_client
         app_update
-        
 )

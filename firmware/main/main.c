@@ -3,6 +3,8 @@
 #include "freertos/queue.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "esp_event.h"
+#include <string.h> // Added for string manipulation safety
 
 // Common & HAL Contracts
 #include "common/app_types.h"
@@ -21,6 +23,9 @@
 #include "system/system_log.h"
 #include "system/system_ota.h"
 #include "system/system_supervisor.h"
+
+// Network manager for WiFi and MQTT
+#include "network/network_manager.h"
 
 
 // I2c Bus Configuration
@@ -61,6 +66,17 @@ void app_main(void)
     ESP_ERROR_CHECK(system_config_init());
     system_config_t sys_cfg;
     ESP_ERROR_CHECK(system_config_load(&sys_cfg)); // Load config from NVS to RAM
+
+    /* * NEW CODE: Development Fallback Mechanism
+     * Check if NVS config returns empty credentials.
+     * If empty, inject temporary hardcoded network parameters for local testing.
+     */
+    if (strlen(sys_cfg.wifi_ssid) == 0) {
+        ESP_LOGW(TAG, "System configuration in NVS is blank. Injecting R&D temporary network profile.");
+        strncpy(sys_cfg.wifi_ssid, "FIRDAUS", sizeof(sys_cfg.wifi_ssid) - 1);
+        strncpy(sys_cfg.wifi_pass, "Bismillah", sizeof(sys_cfg.wifi_pass) - 1);
+        strncpy(sys_cfg.broker_uri, "mqtt://broker.hivemq.com:1883", sizeof(sys_cfg.broker_uri) - 1);
+    }
 
     // 4. OTA Rollback Protection Check (if applicable)
     if (system_ota_pending_verify()){
@@ -107,19 +123,24 @@ void app_main(void)
         .height = 64};
     ESP_ERROR_CHECK(ssd1306_driver.init(&display_cfg));
 
-    // 8. Init System Supervisor Task to monitor system health and perform watchdog resets if necessary
+    // 8. Init Network Manager (WiFi + MQTT)
+    ESP_LOGI(TAG, "Initializing Network Manager...");
+    ESP_ERROR_CHECK(network_manager_init(&sys_cfg)); // Pass system config for WiFi credentials
+    ESP_ERROR_CHECK(network_manager_start()); // Start connection process and telemetry task
+
+    // 9. Init System Supervisor Task to monitor system health and perform watchdog resets if necessary
     system_supervisor_config_t supervisor_cfg = {
         .wdt_timeout_ms = 10000, // 10 detik timeout watchdog
         .trigger_panic = true,   
         .heartbeat_period_ms = 5000, // Publish heartbeat setiap 5 detik
-        .publish = NULL, // Placeholder for health publish function (MQTT publish in real)
+        .publish = network_manager_publish_health, // Placeholder for health publish function (MQTT publish in real)
         .device_id = sys_cfg.device_id // Using device ID from system 
     };
     ESP_ERROR_CHECK(system_supervisor_init(&supervisor_cfg));
 
     
 
-    // 9. Spawn Tasks RTOS for Sensor Reading, Actuator Control, and Display Update
+    // 10. Spawn Tasks RTOS for Sensor Reading, Actuator Control, and Display Update
     //Spawn supervisor task here 
     xTaskCreate(task_supervisor, "task_sys_sup", 3072, NULL, 6, NULL); // Highest priority for system supervisor
 
