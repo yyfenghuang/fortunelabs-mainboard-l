@@ -14,6 +14,7 @@ static const char *TAG = "network_manager";
 
 // Bridge for external access to actuator queue (for command handling in MQTT event)
 extern QueueHandle_t g_queue_actuator; 
+extern float task_sensor_get_latest_voltage(void);
 
 // Internal state
 static system_config_t s_network_cfg;
@@ -116,10 +117,11 @@ static void task_network_telemetry(void *pvParameters){
         xSemaphoreGive(s_status_mutex);
 
         if (ready){
-            // Dummy data simulation
-            float dummy_voltage = 1.5f + ((float)(tx_count % 10)) / 0.1f; // Simulate voltage between 1.5V to 2.5V
+            // Take real voltage data from sensor task 
+            float live_voltage = task_sensor_get_latest_voltage();
 
-            snprintf(payload, sizeof(payload), "{\"seq\":\"%lu\",\"sensor_v\":%.2f,\"status\":\"OK\"}", tx_count++, dummy_voltage); // JSON payload with sequence number and dummy voltage reading
+            // JSon format payload: {"seq":"1","sensor_v":2.34,"status":"OK"}
+            snprintf(payload, sizeof(payload), "{\"seq\":\"%lu\",\"sensor_v\":%.2f,\"status\":\"OK\"}", tx_count++, live_voltage);
 
             int msg_id = esp_mqtt_client_publish(s_mqtt_client, s_topic_telemetry, payload, 0, 1, 0);
             if (msg_id != -1){
@@ -132,7 +134,6 @@ static void task_network_telemetry(void *pvParameters){
             ESP_LOGD(TAG, "MQTT not ready, skipping telemetry publish...");
         }
         vTaskDelay(pdMS_TO_TICKS(5000)); // Publish every 5 seconds
-
     }
 }
 
@@ -178,7 +179,8 @@ esp_err_t network_manager_init(const system_config_t *cfg){
     snprintf(s_topic_telemetry, sizeof(s_topic_telemetry), "fortunelabs/device/%s/telemetry", s_network_cfg.device_id);
     snprintf(s_topic_command, sizeof(s_topic_command), "fortunelabs/device/%s/command", s_network_cfg.device_id);
     snprintf(s_topic_health, sizeof(s_topic_health), "fortunelabs/device/%s/health", s_network_cfg.device_id);
-    ESP_LOGI(TAG, "Configured MQTT topics: Telemetry='%s', Command='%s'", s_topic_telemetry, s_topic_command); // Debug log for topic configuration
+    ESP_LOGI(TAG, "Configured MQTT topics: Telemetry='%s', Command='%s', Health='%s'", 
+             s_topic_telemetry, s_topic_command, s_topic_health);; // Debug log for topic configuration
 
     // 3. Setup MQTT client config
     esp_mqtt_client_config_t mqtt_cfg = {
