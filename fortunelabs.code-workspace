@@ -1,0 +1,48 @@
+{
+	"folders": [
+		{
+			"name": "⚙️ FIRMWARE (ESP-IDF)",
+			"path": "firmware"
+		},
+		{
+			"name": "💻 SOFTWARE",
+			"path": "software"
+		}
+	],
+	"settings": {
+		// --- CONFIG UTAMA INTELLISENSE C/C++ ---
+		"C_Cpp.default.compileCommands": "/home/fenghuang/workspace/fortunelabs-mainboard-l/firmware/build/compile_commands.json",
+		"C_Cpp.default.compilerPath": "/home/fenghuang/.espressif/tools/xtensa-esp-elf/esp-13.2.0_20240530/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc",
+		"C_Cpp.default.cStandard": "c11",
+		"C_Cpp.default.cppStandard": "c++17",
+		"C_Cpp.default.includePath": [
+			"${workspaceFolder}/firmware/**",
+			"/home/fenghuang/esp/esp-idf/components/**"
+		],
+		"C_Cpp.default.browse.path": [
+			"${workspaceFolder}/firmware/**",
+			"/home/fenghuang/esp/esp-idf/components"
+		],
+
+		"workbench.iconTheme": "material-icon-theme",
+
+		// --- FONTS & TYPOGRAPHY ---
+		"editor.fontFamily": "'JetBrains Mono', 'DejaVu Sans Mono', monospace",
+		"editor.fontSize": 14,
+		"editor.lineHeight": 24,
+		"editor.fontLigatures": true,
+
+		// --- CURSOR CONFIGURATION ---
+		"editor.cursorStyle": "line",
+		"editor.cursorBlinking": "phase",
+		"editor.cursorWidth": 3,
+		"editor.cursorSmoothCaretAnimation": "on",
+
+		// --- COMFORT & SCANNABILITY ---
+		"editor.minimap.enabled": false,
+		"editor.guides.bracketPairs": "active",
+		"editor.renderLineHighlight": "all",
+		"editor.wordWrap": "on",
+		"telemetry.telemetryLevel": "off"
+	}
+}
