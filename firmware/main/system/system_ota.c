@@ -7,6 +7,8 @@
 #include "esp_system.h"
 #include <string.h>
 
+// TODO: refactor monolithic OTA to stepped OTA
+
 static const char *TAG = "system_ota";
 
 #define OTA_DEFAULT_TIMEOUT_MS 1000
