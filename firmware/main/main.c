@@ -27,6 +27,8 @@
 // Network manager for WiFi and MQTT
 #include "network/network_manager.h"
 
+#include "system/system_ota.h"
+
 
 // I2c Bus Configuration
 #define MAIN_I2C_SDA_PIN 18
@@ -34,6 +36,7 @@
 #define MAIN_I2C_PORT I2C_NUM_0
 
 static const char *TAG = "main";
+static const char *TEST_TAG = "ota_trigger";
 
 // Storage allocations for global resources
 QueueHandle_t g_queue_display;
@@ -44,6 +47,31 @@ static i2c_bus_t g_i2c_bus;
 extern void task_sensor(void *pvParameters);
 extern void task_actuator(void *pvParameters);
 extern void task_display(void *pvParameters);
+
+void ota_test_task(void *pvParameters) {
+    ESP_LOGI(TEST_TAG, "Starting OTA test task in 10 seconds...");
+    vTaskDelay(pdMS_TO_TICKS(10000)); // Delay to allow system to stabilize
+
+    ESP_LOGI(TEST_TAG, "Waiting for network connection before starting OTA...");
+    
+    system_ota_config_t ota_cfg = {
+        .url = "https://192.168.18.207:8443/firmware.bin",
+        .timeout_ms = 10000,
+        .reboot_on_success = true,
+        .skip_cert_check = true,
+    };
+
+    //Excute OTA main function
+    esp_err_t ret = system_ota_perform(&ota_cfg);
+
+    //Evaluate OTA result
+    if (ret != ESP_OK) {
+        ESP_LOGE(TEST_TAG, "OTA test failed. Error code: %s", esp_err_to_name(ret));
+    }
+
+    // Cleanup and delete task after OTA attempt
+    vTaskDelete(NULL);
+}
 
 void app_main(void)
 {
@@ -139,12 +167,14 @@ void app_main(void)
     ESP_ERROR_CHECK(system_supervisor_init(&supervisor_cfg));
 
     
+    // 10. OTA task
+    xTaskCreate(ota_test_task, "task_ota_test", 8192, NULL, 3, NULL); 
 
-    // 10. Spawn Tasks RTOS for Sensor Reading, Actuator Control, and Display Update
-    //Spawn supervisor task here 
+    // 11. Spawn RTOS tasks for sensor reading, actuator control, and display update
+    // Spawn supervisor task first
     xTaskCreate(task_supervisor, "task_sys_sup", 3072, NULL, 6, NULL); // Highest priority for system supervisor
 
-    xTaskCreate(task_sensor, "task_sensor", 3072, NULL, 5, NULL); // Task sensor have higher priority to ensure responsive reading
+    xTaskCreate(task_sensor, "task_sensor", 3072, NULL, 5, NULL); // Sensor task has higher priority for responsive readings
     xTaskCreate(task_actuator, "task_actuator", 2048, NULL, 5, NULL);
     xTaskCreate(task_display, "task_display", 3072, NULL, 4, NULL);
 
