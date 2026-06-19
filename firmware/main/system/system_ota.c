@@ -7,11 +7,8 @@
 #include "esp_system.h"
 #include <string.h>
 
-<<<<<<< HEAD
-// TODO: refactor monolithic OTA to stepped OTA
-=======
+
 #include "common/app_types.h" 
->>>>>>> 67d1f51 (fix: refactoring monolithic OTA to stepped OTA)
 
 static const char *TAG = "system_ota";
 

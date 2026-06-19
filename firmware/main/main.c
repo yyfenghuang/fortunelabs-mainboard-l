@@ -29,6 +29,8 @@
 
 #include "system/system_ota.h"
 
+// TODO: Comparison test between monolith OTA with stepped OTA
+
 
 // I2c Bus Configuration
 #define MAIN_I2C_SDA_PIN 18
