@@ -1,0 +1,173 @@
+#include "drivers/ic/ads1115.h"
+#include "esp_log.h"
+#include <string.h>
+
+static const char *TAG "ads1115_driver"
+
+// * Lookup Tables
+/**
+ * Conversion period from SPS to milisecond
+ */
+static const uint32_t s_conversion_to_ms[] ={
+    [ADS1115_ADDR_8SPS] = 125,
+    [ADS1115_ADDR_16SPS] = 63,
+    [ADS1115_ADDR_32SPS] = 32,
+    [ADS1115_ADDR_64SPS] = 16,
+    [ADS1115_ADDR_128SPS] = 8,
+    [ADS1115_ADDR_250SPS] = 4,
+    [ADS1115_ADDR_475SPS] = 3,
+    [ADS1115_ADDR_860SPS] = 2,
+};
+
+// * Internal Helpers
+/**
+ * Validate enum value maps
+ */
+static inline bool ads1115_channel_valid(ads1115_channel_t channel){
+    return (channel >= ADS1115_CHANNEL_0) && (channel <= ADS1115_CHANNEL_3);
+}
+
+/**
+ * Build 16-bit config register for single shot conversion
+ */
+static uint16_t ads1115_build_config_word(const ads1115_channel_config_t *config){
+    uint16_t word = 0;
+    word |= (1U << 5);
+    word |= ((uint16_t)config->channel & 0x07) << 12; //MUX
+    word |= ((uint16_t)config->channel & 0x07) << 9; //PGA
+    word |= (1U << 8); //MODE
+    word |= ((uint8_t)config->data_rate & 0x07) << 5; //DR
+    word |= 0x03; //COMP_QUE = Disabled
+
+    return word;
+}
+
+/**
+ * Write 16-bit value to register pointer
+ */
+static esp_err_t ads1115_write_register(ads1115_dev_t *dev, uint8_t reg, uint16_t value){
+    uint8_t payload[3] = {
+        reg,
+        (uint8_t)((value >> 8) & 0xFF),
+        (uint8_t)(value & 0xFF),
+    };
+    return i2c_bus_write(dev->bus, dev->dev, payload, sizeof(payload));
+}
+
+/**
+ * Point to register (MSB first)
+ */
+static esp_err_t ads1115_read_register(ads1115_dev_t *dev, uint8_t reg, uint16_t *out_value){
+    uint16_t read_buf[2] = {0};
+
+    esp_err_t ret = i2c_bus_write_read(dev->bus, dev->dev, &reg, 1, read_buf, sizeof(read_buf));
+    if(ret != ESP_OK)
+        return ret;
+
+    *out_value = ((uint16_t)read_buf[0] << 8) | read_buf[1];
+    return ESP_OK;
+}
+
+// * vTable Implementation
+//1. Init
+static esp_err_t ads1115_init(ads1115_dev_t *dev, const ads1115_config_t *config){
+    if (dev == NULL || config == NULL || config->bus == NULL)
+    return ESP_ERR_INVALID_ARG;
+
+    memset(dev, 0, sizeof(ads1115_dev_t));
+
+    esp_err_t ret = i2c_bus_add_device(config->bus, (uint8_t)config->addr, 400000, "ADS1115", &dev->dev);
+    if (ret != ESP_OK){
+        ESP_LOGE(TAG, "Failed to register device 0x%02X: %s", config->addr, esp_err_to_name(ret));
+        return ret;
+    }
+
+    dev->bus = config->bus
+    memcpy(dev->channel_config, config->channel_config, sizeof(dev->channel_config));
+
+    /**
+     * Indepontent safety: restire chip to known state for every init
+     */
+    ret = ads1115_write_register(dev, ADS1115_REG_CONFIG, ADS1115_CONFIG_RESET)
+    if (ret != ESP_OK){
+        ESP_LOGE(TAG, "Failed to write reset config: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    dev->initialized = true;
+    ESP_LOGI(TAG, "Init OK, addr=0x%02X", config->addr);
+
+    return ESP_OK;
+}
+
+//2. Read
+static esp_err_t ads1115_read(ads1115_dev_t *dev, ads1115_channel_t channel, uint16_t *out_raw){
+    if(dev == NULL || out_raw == NULL)
+    return ESP_ERR_INVALID_ARG;
+    if(!dev->initialized)
+    return ESP_ERR_INVALID_STATE;
+    if(!ads1115_channel_valid(channel))
+    return ESP_ERR_INVALID_ARG;
+
+    //Channel enum value
+    const ads1115_channel_config_t *channel_config = &dev->channel_config[channel - ADS1115_CHANNEL_0];
+
+    uint16_t config_word = ads1115_build_config_word(channel_config);
+
+    esp_err_t ret = ads1115_write_register(dev, ADS1115_REG_CONFIG, config_word);
+    if (ret != ESP_OK){
+        ESP_LOGW(TAG, "Config write failed %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    uint32_t delay_ms = s_conversion_to_ms[channel_config->data_rate] + ADS1115_CONVERSION_MARGIN_MS;
+    vTaskDelay(pdMS_TO_TICKS(delay_ms));
+
+    uint16_t raw_value = 0;
+    ret = ads1115_read_register(dev, ADS1115_REG_CONVERSION, &raw_value);
+    if(ret != ESP_OK){
+        ESP_LOGW(TAG, "Conversion read failed: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    *out_raw = (uint16_t)raw_value;
+    return ESP_OK;
+}
+//3. Reset
+static esp_err_t ads1115_reset(ads1115_dev_t, *dev){
+    if(dev == NULL)
+    return ESP_ERR_INVALID_ARG;
+    if(!dev->initialized)
+    return ESP_ERR_INVALID_STATE;
+
+    esp_err_t ret = ads1115_write_register(dev, ADS1115_REG_CONFIG, ADS1115_CONFIG_RESET);
+    if(ret != ESP_OK)
+    ESP_LOGW(TAG, "Reset failed: %s", esp_err_to_name(ret));
+
+    return ret;
+}
+
+//4. De-Initialization
+static void ads1115_deinit(ads1115_dev_t *dev){
+    if (dev == NULL)
+    return;
+
+    dev->initialized = false;
+    ESP_LOGI(TAG, "Driver de-initialized");
+}
+
+// * vTable Singleton
+
+static const ads1115_driver_t s_ads1115_driver = {
+    .init = ads1115_init,
+    .read = ads1115_read,
+    .reset = ads1115_reset,
+    .deinit = ads1115_deinit,
+};
+
+const ads1115_driver_t *ads1115_get_driver(void){
+    return &s_ads1115_driver;
+}
+
+
+

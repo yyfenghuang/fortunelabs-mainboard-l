@@ -79,7 +79,7 @@ extern "C"{
     {
         i2c_bus_t *bus;
         ads1115_addr_t addr;
-        ads1115_channel_config_t channel_cfg[4];
+        ads1115_channel_config_t channel_config[4];
         bool initialized;
     } ads1115_dev_t;
 
@@ -88,7 +88,7 @@ extern "C"{
     {
         i2c_bus_t *bus;
         ads1115_addr_t addr;
-        ads1115_channel_config_t channel_cfg[4];
+        ads1115_channel_config_t channel_config[4];
     } ads1115_config_t;
 
     //Driver vTable
