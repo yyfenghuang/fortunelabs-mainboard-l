@@ -1,22 +1,23 @@
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
-#include "esp_log.h"
-#include "nvs_flash.h"
 #include "esp_event.h"
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
+#include "nvs_flash.h"
 #include <string.h> // Added for string manipulation safety
 
 // Common & HAL Contracts
-#include "common/app_types.h"
 #include "bus/i2c_bus.h"
-#include "hal/sensor_driver.h"
-#include "hal/output_driver.h"
+#include "common/app_types.h"
 #include "hal/display_driver.h"
+#include "hal/output_driver.h"
+#include "hal/sensor_driver.h"
 
 // Concrete Drivers
-#include "drivers/sensor/sensor_dummy.h"
-#include "drivers/output/actuator_dummy.h"
+#include "drivers/ic/ads1115.h"
 #include "drivers/ic/ssd1306.h"
+#include "drivers/output/actuator_dummy.h"
+#include "drivers/sensor/sensor_dummy.h"
 
 // System services
 #include "system/system_config.h"
@@ -31,42 +32,42 @@
 
 // TODO: Comparison test between monolith OTA with stepped OTA
 
-
 // I2c Bus Configuration
 #define MAIN_I2C_SDA_PIN 18
 #define MAIN_I2C_SCL_PIN 19
 #define MAIN_I2C_PORT I2C_NUM_0
 
-static const char *TAG = "main";
+static const char *TAG      = "main";
 static const char *TEST_TAG = "ota_trigger";
 
 // Storage allocations for global resources
-QueueHandle_t g_queue_display;
-QueueHandle_t g_queue_actuator;
-static i2c_bus_t g_i2c_bus;
+QueueHandle_t        g_queue_display;
+QueueHandle_t        g_queue_actuator;
+static i2c_bus_t     g_i2c_bus;
+static ads1115_dev_t g_ads1115;
 
-// Task prototypes for RTOS 
+// Task prototypes for RTOS
 extern void task_sensor(void *pvParameters);
 extern void task_actuator(void *pvParameters);
 extern void task_display(void *pvParameters);
 
 void ota_test_task(void *pvParameters) {
-    ESP_LOGI(TEST_TAG, "Starting OTA test task in 10 seconds...");
+    ESP_LOGI(TEST_TAG, "Starting OTA test task in 10 seconds");
     vTaskDelay(pdMS_TO_TICKS(10000)); // Delay to allow system to stabilize
 
-    ESP_LOGI(TEST_TAG, "Waiting for network connection before starting OTA...");
-    
+    ESP_LOGI(TEST_TAG, "Waiting for network connection before starting OTA");
+
     system_ota_config_t ota_cfg = {
-        .url = "https://192.168.18.207:8443/firmware.bin",
-        .timeout_ms = 10000,
+        .url               = "https://192.168.18.207:8443/firmware.bin",
+        .timeout_ms        = 10000,
         .reboot_on_success = true,
-        .skip_cert_check = true,
+        .skip_cert_check   = true,
     };
 
-    //Excute OTA main function
+    // Excute OTA main function
     esp_err_t ret = system_ota_perform(&ota_cfg);
 
-    //Evaluate OTA result
+    // Evaluate OTA result
     if (ret != ESP_OK) {
         ESP_LOGE(TEST_TAG, "OTA test failed. Error code: %s", esp_err_to_name(ret));
     }
@@ -75,24 +76,22 @@ void ota_test_task(void *pvParameters) {
     vTaskDelete(NULL);
 }
 
-void app_main(void)
-{
+void app_main(void) {
     ESP_LOGI(TAG, "FortuneLabs Mainboard PoC - booting...");
 
-    // 1. Init NVS
+    // Init NVS
     esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
 
-    // 2. Init System Logging Facade
+    // Init System Logging Facade
     ESP_ERROR_CHECK(system_log_init(ESP_LOG_INFO)); // Set default log level to INFO
     ESP_LOGI(TAG, "FortuneLabs Mainboard PoC - Booting ...");
 
-    // 3. Init & Load System Configuration 
+    // Init & Load System Configuration
     ESP_ERROR_CHECK(system_config_init());
     system_config_t sys_cfg;
     ESP_ERROR_CHECK(system_config_load(&sys_cfg)); // Load config from NVS to RAM
@@ -102,39 +101,44 @@ void app_main(void)
      * If empty, inject temporary hardcoded network parameters for local testing.
      */
     if (strlen(sys_cfg.wifi_ssid) == 0) {
-        ESP_LOGW(TAG, "System configuration in NVS is blank. Injecting R&D temporary network profile.");
+        ESP_LOGW(TAG,
+                 "System configuration in NVS is blank. Injecting R&D temporary network profile.");
         strncpy(sys_cfg.wifi_ssid, "FIRDAUS", sizeof(sys_cfg.wifi_ssid) - 1);
         strncpy(sys_cfg.wifi_pass, "Bismillah", sizeof(sys_cfg.wifi_pass) - 1);
-        strncpy(sys_cfg.broker_uri, "mqtt://broker.hivemq.com:1883", sizeof(sys_cfg.broker_uri) - 1);
+        strncpy(sys_cfg.broker_uri, "mqtt://broker.hivemq.com:1883",
+                sizeof(sys_cfg.broker_uri) - 1);
     }
 
-    // 4. OTA Rollback Protection Check (if applicable)
-    if (system_ota_pending_verify()){
+    // OTA Rollback Protection Check (if applicable)
+    if (system_ota_pending_verify()) {
         ESP_LOGI(TAG, "New Firmware booted successfully. Marking OTA as verified.");
-        system_ota_mark_valid(); 
+        system_ota_mark_valid();
     }
 
-    // 5. Init I2C master 
+    // Init I2C master
     i2c_bus_config_t bus_cfg = {
         .sda_pin = MAIN_I2C_SDA_PIN,
         .scl_pin = MAIN_I2C_SCL_PIN,
-        .port = MAIN_I2C_PORT,
-        .clk_hz = 100000 // 100 kHz Fast Mode
+        .port    = MAIN_I2C_PORT,
+        .clk_hz  = 100000 // 100 kHz Fast Mode
     };
     ESP_LOGI(TAG, "Initializing I2C Master Bus...");
     ESP_ERROR_CHECK(i2c_bus_init(&g_i2c_bus, &bus_cfg));
 
-    // 6. Inter-task alloc for communication via FreeRTOS Queues
-    g_queue_display = xQueueCreate(10, sizeof(display_msg_t)); // using struct for display messages (row + text)
-    g_queue_actuator = xQueueCreate(5, sizeof(bool));          // using bool for simple ON/OFF control
+    ESP_LOGI(TAG, "Pre-flight I2C bus scan...");
+    i2c_bus_scan(&g_i2c_bus);
 
-    if (g_queue_display == NULL || g_queue_actuator == NULL)
-    {
+    // Inter-task alloc for communication via FreeRTOS Queues
+    g_queue_display =
+        xQueueCreate(10, sizeof(display_msg_t)); // using struct for display messages (row + text)
+    g_queue_actuator = xQueueCreate(5, sizeof(bool)); // using bool for simple ON/OFF control
+
+    if (g_queue_display == NULL || g_queue_actuator == NULL) {
         ESP_LOGE(TAG, "Queue creation failed!");
         esp_restart();
     }
 
-    // 7. Init all hardware drivers (Sensor, Actuator, Display) with their respective configs
+    // Init all hardware drivers (Sensor, Actuator, Display) with their respective configs
     ESP_LOGI(TAG, "Initializing hardware drivers...");
 
     // Init Potentiometer Dummy
@@ -146,37 +150,73 @@ void app_main(void)
     ESP_ERROR_CHECK(actuator_dummy_driver.init(&actuator_cfg));
 
     // Init Physical SSD1306 OLED via I2C Bus
-    display_config_t display_cfg = {
-        .bus = &g_i2c_bus,
-        .i2c_addr = 0x3C, // Alamat I2C standard SSD1306
-        .width = 128,
-        .height = 64};
+    display_config_t display_cfg = {.bus      = &g_i2c_bus,
+                                    .i2c_addr = 0x3C, // Alamat I2C standard SSD1306
+                                    .width    = 128,
+                                    .height   = 64};
     ESP_ERROR_CHECK(ssd1306_driver.init(&display_cfg));
+
+    // Init ADS1115ADC
+    ads1115_config_t ads1115_config = {
+        .bus  = &g_i2c_bus,
+        .addr = ADS1115_ADDR_GND, // ADDR to GND -> 0x48
+        .channel_config =
+            {
+                [0] = {.channel   = ADS1115_CHANNEL_0,
+                       .pga       = ADS1115_PGA_4_096V,
+                       .data_rate = ADS1115_DR_128SPS},
+                [1] = {.channel   = ADS1115_CHANNEL_1,
+                       .pga       = ADS1115_PGA_2_048V,
+                       .data_rate = ADS1115_DR_64SPS},
+                [2] = {.channel   = ADS1115_CHANNEL_2,
+                       .pga       = ADS1115_PGA_4_096V,
+                       .data_rate = ADS1115_DR_128SPS},
+                [3] = {.channel   = ADS1115_CHANNEL_3,
+                       .pga       = ADS1115_PGA_2_048V,
+                       .data_rate = ADS1115_DR_64SPS},
+            },
+    };
+
+    const ads1115_driver_t *ads1115_drv = ads1115_get_driver();
+    ESP_ERROR_CHECK(ads1115_drv->init(&g_ads1115, &ads1115_config));
+
+    uint16_t  raw        = 0;
+    esp_err_t adc_return = ads1115_drv->read(&g_ads1115, ADS1115_CHANNEL_0, &raw);
+
+    if (adc_return == ESP_OK) {
+        float voltage = raw * 0.000125f;
+        ESP_LOGI(TAG, "ADS1115 AINO - RAW=%d, Voltage=%4fV", raw, voltage);
+    } else {
+        ESP_LOGE(TAG, "ADS1115 read failed: %s", esp_err_to_name(adc_return));
+    }
 
     // 8. Init Network Manager (WiFi + MQTT)
     ESP_LOGI(TAG, "Initializing Network Manager...");
     ESP_ERROR_CHECK(network_manager_init(&sys_cfg)); // Pass system config for WiFi credentials
-    ESP_ERROR_CHECK(network_manager_start()); // Start connection process and telemetry task
+    ESP_ERROR_CHECK(network_manager_start());        // Start connection process and telemetry task
 
-    // 9. Init System Supervisor Task to monitor system health and perform watchdog resets if necessary
+    // 9. Init System Supervisor Task to monitor system health and perform watchdog resets if
+    // necessary
     system_supervisor_config_t supervisor_cfg = {
-        .wdt_timeout_ms = 10000, // 10 detik timeout watchdog
-        .trigger_panic = true,   
-        .heartbeat_period_ms = 5000, // Publish heartbeat setiap 5 detik
-        .publish = network_manager_publish_health, // Placeholder for health publish function (MQTT publish in real)
-        .device_id = sys_cfg.device_id // Using device ID from system 
+        .wdt_timeout_ms      = 10000, // 10 detik timeout watchdog
+        .trigger_panic       = true,
+        .heartbeat_period_ms = 5000,               // Publish heartbeat setiap 5 detik
+        .publish = network_manager_publish_health, // Placeholder for health publish function (MQTT
+                                                   // publish in real)
+        .device_id = sys_cfg.device_id             // Using device ID from system
     };
     ESP_ERROR_CHECK(system_supervisor_init(&supervisor_cfg));
 
-    
     // 10. OTA task
-    xTaskCreate(ota_test_task, "task_ota_test", 8192, NULL, 3, NULL); 
+    xTaskCreate(ota_test_task, "task_ota_test", 8192, NULL, 3, NULL);
 
     // 11. Spawn RTOS tasks for sensor reading, actuator control, and display update
     // Spawn supervisor task first
-    xTaskCreate(task_supervisor, "task_sys_sup", 3072, NULL, 6, NULL); // Highest priority for system supervisor
+    xTaskCreate(task_supervisor, "task_sys_sup", 3072, NULL, 6,
+                NULL); // Highest priority for system supervisor
 
-    xTaskCreate(task_sensor, "task_sensor", 3072, NULL, 5, NULL); // Sensor task has higher priority for responsive readings
+    xTaskCreate(task_sensor, "task_sensor", 3072, NULL, 5,
+                NULL); // Sensor task has higher priority for responsive readings
     xTaskCreate(task_actuator, "task_actuator", 2048, NULL, 5, NULL);
     xTaskCreate(task_display, "task_display", 3072, NULL, 4, NULL);
 

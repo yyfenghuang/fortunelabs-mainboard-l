@@ -88,5 +88,12 @@
     "editor.wordWrap": "on",
     "workbench.iconTheme": "a-file-icon-vscode",
     "telemetry.telemetryLevel": "off",
-    "idf.currentSetup": "/home/fenghuang/esp/esp-idf"
+    "idf.currentSetup": "/home/fenghuang/esp/esp-idf",
+    "editor.formatOnSave": true,
+    "[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "[cpp]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    }
 }
