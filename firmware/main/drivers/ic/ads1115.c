@@ -59,7 +59,7 @@ static esp_err_t ads1115_read_register(ads1115_dev_t *dev, uint8_t reg, uint16_t
     if (ret != ESP_OK)
         return ret;
 
-    *out_value = ((uint8_t)read_buf[0] << 8) | read_buf[1];
+    *out_value = ((uint16_t)read_buf[0] << 8) | read_buf[1];
     return ESP_OK;
 }
 

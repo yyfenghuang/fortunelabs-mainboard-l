@@ -30,7 +30,7 @@ extern "C" {
 typedef enum {
     ADS1115_ADDR_GND = 0x48,
     ADS1115_ADDR_VDD = 0x49,
-    ADS1115_ADDR_SDA = 0x42,
+    ADS1115_ADDR_SDA = 0x4A,
     ADS1115_ADDR_SCL = 0x4B,
 } ads1115_addr_t;
 
