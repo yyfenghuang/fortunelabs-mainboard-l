@@ -9,9 +9,9 @@ static const char *TAG = "ads1115_driver";
  * Conversion period from SPS to milisecond
  */
 static const uint32_t s_conversion_to_ms[] = {
-    [ADS1115_DR_8SPS] = 125, [ADS1115_DR_16SPS] = 63, [ADS1115_DR_32SPS] = 32,
-    [ADS1115_DR_64SPS] = 16, [ADS1115_DR_128SPS] = 8, [ADS1115_DR_250SPS] = 4,
-    [ADS1115_DR_475SPS] = 3, [ADS1115_DR_860SPS] = 2,
+    [ADS1115_DR_16SPS] = 63, [ADS1115_DR_32SPS] = 32, [ADS1115_DR_64SPS] = 16,
+    [ADS1115_DR_128SPS] = 8, [ADS1115_DR_250SPS] = 4, [ADS1115_DR_475SPS] = 3,
+    [ADS1115_DR_860SPS] = 2,
 };
 
 // * Internal Helpers

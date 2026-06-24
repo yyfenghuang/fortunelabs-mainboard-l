@@ -1,5 +1,5 @@
 /**
- * @file
+ * @file ads1115.h
  */
 
 #pragma once
@@ -54,14 +54,13 @@ typedef enum {
 
 // Output Data rate
 typedef enum {
-    ADS1115_DR_8SPS   = 0, // 0b000 -> 8SPS, ~125ms conversion
-    ADS1115_DR_16SPS  = 1, // 0b001 -> 8SPS, ~62.5ms conversion
-    ADS1115_DR_32SPS  = 2, // 0b010 -> 8SPS, ~31.25ms conversion
-    ADS1115_DR_64SPS  = 3, // 0b011 -> 8SPS, ~15.6ms conversion
-    ADS1115_DR_128SPS = 4, // 0b100 -> 8SPS, ~7.8ms conversion
-    ADS1115_DR_250SPS = 5, // 0b101 -> 8SPS, ~4.0ms conversion
-    ADS1115_DR_475SPS = 6, // 0b110 -> 8SPS, ~2.1ms conversion
-    ADS1115_DR_860SPS = 7, // 0b111 -> 8SPS, ~1.2ms conversion
+    ADS1115_DR_16SPS  = 1, // 0b001 -> 16SPS,  ~62.5ms conversion
+    ADS1115_DR_32SPS  = 2, // 0b010 -> 32SPS,  ~31.25ms conversion
+    ADS1115_DR_64SPS  = 3, // 0b011 -> 64SPS,  ~15.6ms conversion
+    ADS1115_DR_128SPS = 4, // 0b100 -> 128SPS, ~7.8ms conversion
+    ADS1115_DR_250SPS = 5, // 0b101 -> 250SPS, ~4.0ms conversion
+    ADS1115_DR_475SPS = 6, // 0b110 -> 475SPS, ~2.1ms conversion
+    ADS1115_DR_860SPS = 7, // 0b111 -> 860SPS, ~1.2ms conversion
 } ads1115_data_rate_t;
 
 // Per-channel config
@@ -87,30 +86,45 @@ typedef struct {
     ads1115_channel_config_t channel_config[4];
 } ads1115_config_t;
 
-// Driver vTable
+/**
+ * @brief ADS1115 driver interface (vtable).
+ * Defines the unified contract for all ADS1115 operations.
+ *
+ * @param dev     Pointer to the ADS1115 runtime context (ads1115_dev_t)
+ * @param cfg     Pointer to the initialization config (ads1115_config_t)
+ * @param channel Channel to trigger and read (ads1115_channel_t)
+ * @param out_raw Output pointer for raw 16-bit conversion result
+ *
+ * @return
+ * - ESP_OK: Operation completed successfully
+ * - ESP_ERR_INVALID_ARG: NULL pointer or invalid argument
+ * - ESP_ERR_INVALID_STATE: Driver not initialized
+ * - ESP_FAIL: I2C transaction failed
+ * - void: No return value
+ */
 typedef struct {
     /**
-     * Init
+     * @brief Initialize driver, register I2C device, apply per-channel config
      */
     esp_err_t (*init)(ads1115_dev_t *dev, const ads1115_config_t *cfg);
 
     /**
-     * Trigger single shot
+     *  @brief Trigger single-shot conversion and return raw result
      */
     esp_err_t (*read)(ads1115_dev_t *dev, ads1115_channel_t channel, uint16_t *out_raw);
     /**
-     * Write factory default value to config register
+     * @brief Write factory default value to config register
      */
     esp_err_t (*reset)(ads1115_dev_t *dev);
     /**
-     * De-init all resource held by driver instance
+     * @brief De-init all resource held by driver instance
      */
     void (*deinit)(ads1115_dev_t *dev);
 } ads1115_driver_t;
 
 // Concrete Driver Access
 /**
- * Return pointer into singleton concrete driver vTable
+ * @brief Return pointer into singleton concrete driver vTable
  */
 const ads1115_driver_t *ads1115_get_driver(void);
 

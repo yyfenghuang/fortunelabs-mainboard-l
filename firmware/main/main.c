@@ -28,8 +28,6 @@
 // Network manager for WiFi and MQTT
 #include "network/network_manager.h"
 
-#include "system/system_ota.h"
-
 // TODO: Comparison test between monolith OTA with stepped OTA
 
 // I2c Bus Configuration
@@ -193,7 +191,7 @@ void app_main(void) {
     // 8. Init Network Manager (WiFi + MQTT)
     ESP_LOGI(TAG, "Initializing Network Manager...");
     ESP_ERROR_CHECK(network_manager_init(&sys_cfg)); // Pass system config for WiFi credentials
-    ESP_ERROR_CHECK(network_manager_start());        // Start connection process and telemetry task
+    ESP_ERROR_CHECK(network_manager_start());        // Start connection process and telemetry
 
     // 9. Init System Supervisor Task to monitor system health and perform watchdog resets if
     // necessary
