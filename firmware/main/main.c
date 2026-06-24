@@ -1,3 +1,18 @@
+/**
+ * @file main.c
+ * @brief Fortune Labs Mainboard PoC — application entry point.
+ *
+ * Sequence:
+ *   1. NVS init
+ *   2. System services (log, config, OTA check)
+ *   3. I2C bus init + scan
+ *   4. Hardware driver init (ADS1115, SSD1306, dummy sensor/actuator)
+ *   5. Queue allocation
+ *   6. Network manager init
+ *   7. System supervisor init
+ *   8. RTOS task spawn
+ */
+
 #include "esp_event.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -6,26 +21,26 @@
 #include "nvs_flash.h"
 #include <string.h> // Added for string manipulation safety
 
-// Common & HAL Contracts
+/* --- HAL Contracts --- */
 #include "bus/i2c_bus.h"
 #include "common/app_types.h"
 #include "hal/display_driver.h"
 #include "hal/output_driver.h"
 #include "hal/sensor_driver.h"
 
-// Concrete Drivers
+/* --- Concrete Drivers --- */
 #include "drivers/ic/ads1115.h"
 #include "drivers/ic/ssd1306.h"
 #include "drivers/output/actuator_dummy.h"
 #include "drivers/sensor/sensor_dummy.h"
 
-// System services
+/* --- System Services --- */
 #include "system/system_config.h"
 #include "system/system_log.h"
 #include "system/system_ota.h"
 #include "system/system_supervisor.h"
 
-// Network manager for WiFi and MQTT
+/* --- Network --- */
 #include "network/network_manager.h"
 
 // TODO: Comparison test between monolith OTA with stepped OTA
@@ -38,7 +53,10 @@
 static const char *TAG      = "main";
 static const char *TEST_TAG = "ota_trigger";
 
-// Storage allocations for global resources
+/* --- Global Resources ---
+ * Queues are extern-accessible by tasks.
+ * Bus and device instances are static — owned by main, passed by pointer.
+ */
 QueueHandle_t        g_queue_display;
 QueueHandle_t        g_queue_actuator;
 static i2c_bus_t     g_i2c_bus;
@@ -49,6 +67,10 @@ extern void task_sensor(void *pvParameters);
 extern void task_actuator(void *pvParameters);
 extern void task_display(void *pvParameters);
 
+/**
+ * @brief Temporary R&D task: triggers OTA update 10s after boot.
+ * @note Remove before production deployment.
+ */
 void ota_test_task(void *pvParameters) {
     ESP_LOGI(TEST_TAG, "Starting OTA test task in 10 seconds");
     vTaskDelay(pdMS_TO_TICKS(10000)); // Delay to allow system to stabilize
@@ -77,7 +99,7 @@ void ota_test_task(void *pvParameters) {
 void app_main(void) {
     ESP_LOGI(TAG, "FortuneLabs Mainboard PoC - booting...");
 
-    // Init NVS
+    /* [1] NVS ---------------------------------------------------------------- */
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
@@ -85,18 +107,17 @@ void app_main(void) {
     }
     ESP_ERROR_CHECK(ret);
 
-    // Init System Logging Facade
+    /* [2] System Log --------------------------------------------------------- */
     ESP_ERROR_CHECK(system_log_init(ESP_LOG_INFO)); // Set default log level to INFO
     ESP_LOGI(TAG, "FortuneLabs Mainboard PoC - Booting ...");
 
-    // Init & Load System Configuration
+    /* [3] System Config ------------------------------------------------------ */
     ESP_ERROR_CHECK(system_config_init());
     system_config_t sys_cfg;
     ESP_ERROR_CHECK(system_config_load(&sys_cfg)); // Load config from NVS to RAM
 
-    /* * NEW CODE: Development Fallback Mechanism
-     * Check if NVS config returns empty credentials.
-     * If empty, inject temporary hardcoded network parameters for local testing.
+    /* [DEV ONLY] WiFi credential fallback — inject hardcoded SSID if NVS blank.
+     * Remove or replace with provisioning flow before production.
      */
     if (strlen(sys_cfg.wifi_ssid) == 0) {
         ESP_LOGW(TAG,
@@ -107,13 +128,14 @@ void app_main(void) {
                 sizeof(sys_cfg.broker_uri) - 1);
     }
 
-    // OTA Rollback Protection Check (if applicable)
+    /* [4] OTA Rollback Check ------------------------------------------------- */
     if (system_ota_pending_verify()) {
         ESP_LOGI(TAG, "New Firmware booted successfully. Marking OTA as verified.");
         system_ota_mark_valid();
     }
 
-    // Init I2C master
+    //* [5] I2C Bus ------------------------------------------------------------ */
+    // Init I2C Master
     i2c_bus_config_t bus_cfg = {
         .sda_pin = MAIN_I2C_SDA_PIN,
         .scl_pin = MAIN_I2C_SCL_PIN,
@@ -126,7 +148,7 @@ void app_main(void) {
     ESP_LOGI(TAG, "Pre-flight I2C bus scan...");
     i2c_bus_scan(&g_i2c_bus);
 
-    // Inter-task alloc for communication via FreeRTOS Queues
+    /* [6] Queue Allocation --------------------------------------------------- */
     g_queue_display =
         xQueueCreate(10, sizeof(display_msg_t)); // using struct for display messages (row + text)
     g_queue_actuator = xQueueCreate(5, sizeof(bool)); // using bool for simple ON/OFF control
@@ -136,7 +158,7 @@ void app_main(void) {
         esp_restart();
     }
 
-    // Init all hardware drivers (Sensor, Actuator, Display) with their respective configs
+    /* [7] Driver Init -------------------------------------------------------- */
     ESP_LOGI(TAG, "Initializing hardware drivers...");
 
     // Init Potentiometer Dummy
@@ -188,13 +210,12 @@ void app_main(void) {
         ESP_LOGE(TAG, "ADS1115 read failed: %s", esp_err_to_name(adc_return));
     }
 
-    // 8. Init Network Manager (WiFi + MQTT)
+    /* [8] Network Manager ---------------------------------------------------- */
     ESP_LOGI(TAG, "Initializing Network Manager...");
     ESP_ERROR_CHECK(network_manager_init(&sys_cfg)); // Pass system config for WiFi credentials
     ESP_ERROR_CHECK(network_manager_start());        // Start connection process and telemetry
 
-    // 9. Init System Supervisor Task to monitor system health and perform watchdog resets if
-    // necessary
+    /* [9] System Supervisor -------------------------------------------------- */
     system_supervisor_config_t supervisor_cfg = {
         .wdt_timeout_ms      = 10000, // 10 detik timeout watchdog
         .trigger_panic       = true,
@@ -205,14 +226,11 @@ void app_main(void) {
     };
     ESP_ERROR_CHECK(system_supervisor_init(&supervisor_cfg));
 
-    // 10. OTA task
+    /* [10] Task Spawn -------------------------------------------------------- */
     xTaskCreate(ota_test_task, "task_ota_test", 8192, NULL, 3, NULL);
-
-    // 11. Spawn RTOS tasks for sensor reading, actuator control, and display update
     // Spawn supervisor task first
     xTaskCreate(task_supervisor, "task_sys_sup", 3072, NULL, 6,
                 NULL); // Highest priority for system supervisor
-
     xTaskCreate(task_sensor, "task_sensor", 3072, NULL, 5,
                 NULL); // Sensor task has higher priority for responsive readings
     xTaskCreate(task_actuator, "task_actuator", 2048, NULL, 5, NULL);
