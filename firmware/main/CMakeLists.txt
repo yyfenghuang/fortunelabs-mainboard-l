@@ -19,6 +19,7 @@ idf_component_register(
         "drivers/output/actuator_dummy.c"
         "drivers/ic/ssd1306.c"
         "drivers/ic/ads1115.c"
+        "drivers/ic/mcp23017.c"
 
         # --- Network & Communication ---
         "network/network_manager.c"
