@@ -91,6 +91,7 @@ typedef enum {
 typedef struct {
     i2c_bus_t *bus;
     uint8_t    address;
+    uint32_t   scl_hz;
     uint8_t    dir_a;
     uint8_t    dir_b;
     uint8_t    pullup_a;
@@ -117,13 +118,14 @@ typedef struct {
  * @param olat_b         Shadow of OLATB register
  */
 typedef struct {
-    i2c_bus_t *bus_handle;
-    uint8_t    dev_addr;
-    bool       is_initialized;
-    uint8_t    dir_a;
-    uint8_t    dir_b;
-    uint8_t    olat_a;
-    uint8_t    olat_b;
+    i2c_bus_t              *bus_handle;
+    i2c_master_dev_handle_t dev_handle;
+    uint8_t                 dev_addr;
+    bool                    is_initialized;
+    uint8_t                 dir_a;
+    uint8_t                 dir_b;
+    uint8_t                 olat_a;
+    uint8_t                 olat_b;
 } mcp23017_t;
 
 /* --------------------------- PUBLIC API ----------------------------*/
