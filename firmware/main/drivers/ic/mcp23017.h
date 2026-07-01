@@ -1,6 +1,6 @@
 /**
  * @file mcp23017.h
- * @brief CP23017 I2C GPIO Expander Driver
+ * @brief MCP23017 I2C GPIO Expander Driver
  *
  * Driver for the Microchip MCP23017 16-bit bidirectional I/O expander.
  * Communicates over I2C using the platform i2c_bus abstraction layer.
@@ -17,8 +17,13 @@
  * Interrupt registers (GPINTEN, DEFVAL, INTCON, INTF, INTCAP) are
  * not exposed in this driver phase.
  *
- * @note All public functions return ESP_ERR_INVALID_STATE if called
- *       before mcp23017_init() completes successfully.
+ * Access pattern: vtable (mcp23017_driver_t) obtained via
+ * mcp23017_get_driver(). All operations are reached through the
+ * function pointers in this vtable; there are no other public entry
+ * points into the driver.
+ *
+ * @note All vtable methods except init() return ESP_ERR_INVALID_STATE if
+ *       called before init() completes successfully.
  */
 
 #pragma once
@@ -27,6 +32,10 @@
 #include <esp_err.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* ------------------------ REGIGISTER MAP ---------------------------------*/
 #define MCP23017_REG_IODIRA 0x00 ///< I/O Direction Register for Port A (1=input, 0=output)
@@ -78,7 +87,7 @@ typedef enum {
 /**
  * @brief Init configuration for MCP23017 driver instance.
  *
- * Passed to mcp23017_init() and not retained after init completes.
+ * Passed to init() and not retained after init completes.
  * All register values written to hardware during init sequence.
  *
  * @param bus       Pointer to an already-initialized i2c_bus_t instance
@@ -102,8 +111,8 @@ typedef struct {
 /**
  * @brief MCP23017 driver instance context.
  *
- * Caller allocates this struct (stack or static). All public functions
- * receive a pointer to this struct as their first argument.
+ * Caller allocates this struct (stack or static). Every vtable method
+ * receives a pointer to this struct as its first argument.
  *
  * Shadow fields (dir_a, dir_b, olat_a, olat_b) are kept in sync with
  * the hardware registers at all times by the driver. They enable
@@ -128,204 +137,88 @@ typedef struct {
     uint8_t                 olat_b;
 } mcp23017_t;
 
-/* --------------------------- PUBLIC API ----------------------------*/
-// [1] Lifecycle
 /**
- * @brief Initialize the MCP23017 driver instance.
+ * @brief MCP23017 driver interface (vtable).
+ * Defines the unified contract for all MCP23017 operations. Single access
+ * path: callers only ever reach the concrete implementation through these
+ * function pointers, obtained via mcp23017_get_driver().
  *
- * Writes IOCON to lock BANK = 0, then writes IODIRA/B, GPPUA/B, and OLATA/B
- * to hardware. Synchronizes all shadow registers to match hardware state.
- * Sets is_initialized = true on success.
- *
- * @param dev   Pointer to caller-allocated mcp23017_t context struct
- * @param cfg   Pointer to ephemeral mcp23017_config_t configuration
- *
- * @return
- * - ESP_OK              : IC acknowledged, all registers written, driver ready
- * - ESP_ERR_INVALID_ARG : dev or cfg is NULL, or cfg->bus is NULL,
- *                         or cfg->address is out of valid range
- * - ESP_FAIL            : I2C transaction failed (IC did not ACK)
- */
-esp_err_t mcp23017_init(mcp23017_t *dev, const mcp23017_config_t *config);
-
-/**
- * @brief Deinitialize the MCP23017 driver instance.
- *
- * Clears all fields in the context struct and sets is_initialized = false.
- * Does not issue any I2C transactions — hardware state is left as-is.
- *
- * @param dev   Pointer to mcp23017_t context struct to be cleared
- *
- * @return void
- */
-void mcp23017_deinit(mcp23017_t *dev); // why not esp_err_t?
-
-// [2] Port-level operation
-/**
- * @brief Set direction for all pins on a port simultaneously.
- *
- * Writes the full direction bitmask to IODIRA or IODIRB.
- * Updates the corresponding dir shadow register.
- *
- * @param dev       Pointer to initialized mcp23017_t context
- * @param port      Target port (MCP23017_PORT_A or MCP23017_PORT_B)
- * @param dir_mask  Bit=1 configures pin as input, bit=0 as output
- *
- * @return
- * - ESP_OK                : Register written, shadow updated
- * - ESP_ERR_INVALID_STATE : Driver not initialized
- * - ESP_ERR_INVALID_ARG   : Invalid port value
- * - ESP_FAIL              : I2C transaction failed
- */
-esp_err_t mcp23017_set_port_direction(mcp23017_t *dev, mcp23017_port_t port, uint8_t dir_mask);
-
-/**
- * @brief Write logic levels to all pins on a port simultaneously.
- *
- * Writes the full output bitmask to OLATA or OLATB.
- * Updates the corresponding olat shadow register.
- * Only affects pins configured as output via IODIR.
- *
- * @param dev       Pointer to initialized mcp23017_t context
- * @param port      Target port (MCP23017_PORT_A or MCP23017_PORT_B)
- * @param value     Bit=1 drives pin HIGH, bit=0 drives pin LOW
- *
- * @return
- * - ESP_OK                : Register written, shadow updated
- * - ESP_ERR_INVALID_STATE : Driver not initialized
- * - ESP_ERR_INVALID_ARG   : Invalid port value
- * - ESP_FAIL              : I2C transaction failed
- */
-esp_err_t mcp23017_write_port(mcp23017_t *dev, mcp23017_port_t port, uint8_t value);
-
-/**
- * @brief Read the live logic state of all pins on a port.
- *
- * Issues a direct I2C read from GPIOA or GPIOB register.
- * Reflects actual pin state — not the output latch.
- *
- * @param dev       Pointer to initialized mcp23017_t context
- * @param port      Target port (MCP23017_PORT_A or MCP23017_PORT_B)
- * @param out_value Receives the GPIO register value
- *
- * @return
- * - ESP_OK                : Read successful, out_value populated
- * - ESP_ERR_INVALID_STATE : Driver not initialized
- * - ESP_ERR_INVALID_ARG   : Invalid port value or out_value is NULL
- * - ESP_FAIL              : I2C transaction failed
- */
-esp_err_t mcp23017_read_port(mcp23017_t *dev, mcp23017_port_t port, uint8_t *output_value);
-
-/**
- * @brief Configure internal weak pull-up resistors for all pins on a port.
- *
- * Writes the pull-up bitmask to GPPUA or GPPUB.
- * Only meaningful for pins configured as input.
- *
- * @param dev          Pointer to initialized mcp23017_t context
- * @param port         Target port (MCP23017_PORT_A or MCP23017_PORT_B)
- * @param pullup_mask  Bit=1 enables pull-up, bit=0 disables
- *
- * @return
- * - ESP_OK                : Register written
- * - ESP_ERR_INVALID_STATE : Driver not initialized
- * - ESP_ERR_INVALID_ARG   : Invalid port value
- * - ESP_FAIL              : I2C transaction failed
- */
-esp_err_t mcp23017_set_port_pullup(mcp23017_t *dev, mcp23017_port_t port, uint8_t pullup_mask);
-
-/**
- * @brief Configure input polarity inversion for all pins on a port.
- *
- * Writes the polarity bitmask to IPOLA or IPOLB.
- * bit=1 inverts the corresponding GPIO register bit relative to the physical pin.
- * bit=0 reflects the physical pin state directly.
- *
- * @param dev           Pointer to initialized mcp23017_t context
+ * @param dev           Pointer to the MCP23017 runtime context (mcp23017_t)
+ * @param cfg           Pointer to the initialization config (mcp23017_config_t)
  * @param port          Target port (MCP23017_PORT_A or MCP23017_PORT_B)
+ * @param pin           Pin index within the port (0–7, MCP23017_PIN_MAX)
+ * @param dir_mask      Bit=1 configures pin as input, bit=0 as output
+ * @param direction     MCP23017_DIR_INPUT or MCP23017_DIR_OUTPUT
+ * @param value         Port-level: bit=1 drives pin HIGH, bit=0 drives pin LOW.
+ *                      Pin-level: true = drive HIGH, false = drive LOW
+ * @param pullup_mask   Bit=1 enables pull-up, bit=0 disables
  * @param polarity_mask Bit=1 inverts input, bit=0 no inversion
+ * @param output_value  Receives the GPIO register value for the port
+ * @param out_value     Receives the live logic state of a single pin
  *
  * @return
- * - ESP_OK                : Register written
+ * - ESP_OK                : Operation completed successfully
+ * - ESP_ERR_INVALID_ARG   : NULL pointer, invalid port/pin, or invalid enum value
  * - ESP_ERR_INVALID_STATE : Driver not initialized
- * - ESP_ERR_INVALID_ARG   : Invalid port value
- * - ESP_FAIL              : I2C transaction failed
+ * - ESP_FAIL              : I2C transaction failed (IC did not ACK)
+ * - void                  : No return value
  */
-esp_err_t mcp23017_set_port_polarity(mcp23017_t *dev, mcp23017_port_t port, uint8_t polarity_mask);
+typedef struct {
+    /**
+     * @brief Initialize driver, register I2C device, apply direction/pullup/OLAT config
+     */
+    esp_err_t (*init)(mcp23017_t *dev, const mcp23017_config_t *cfg);
+    /**
+     * @brief Clear context struct; issues no I2C transactions, hardware state is left as-is
+     */
+    void (*deinit)(mcp23017_t *dev);
 
-// [3] Pin-level operations
-/**
- * @brief Configure direction of a single pin.
- *
- * Performs bitwise RMW on the dir shadow register, then writes
- * the full updated byte to IODIRA or IODIRB. Zero I2C reads required.
- *
- * @param dev   Pointer to initialized mcp23017_t context
- * @param port  Target port (MCP23017_PORT_A or MCP23017_PORT_B)
- * @param pin   Pin index within the port (0–7, MCP23017_PIN_MAX)
- * @param dir   MCP23017_DIR_INPUT or MCP23017_DIR_OUTPUT
- *
- * @return
- * - ESP_OK                : Shadow updated, register written
- * - ESP_ERR_INVALID_STATE : Driver not initialized
- * - ESP_ERR_INVALID_ARG   : Invalid port, pin index out of range, or invalid dir
- * - ESP_FAIL              : I2C transaction failed
- */
-esp_err_t mcp23017_set_pin_direction(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin,
-                                     mcp23017_direction_t direction);
+    /**
+     * @brief Set direction for all pins on a port simultaneously
+     */
+    esp_err_t (*set_port_direction)(mcp23017_t *dev, mcp23017_port_t port, uint8_t dir_mask);
+    /**
+     * @brief Write logic levels to all pins on a port simultaneously (output pins only)
+     */
+    esp_err_t (*write_port)(mcp23017_t *dev, mcp23017_port_t port, uint8_t value);
+    /**
+     * @brief Read the live logic state of all pins on a port (GPIO register, not OLAT)
+     */
+    esp_err_t (*read_port)(mcp23017_t *dev, mcp23017_port_t port, uint8_t *output_value);
+    /**
+     * @brief Configure internal weak pull-up resistors for all pins on a port
+     */
+    esp_err_t (*set_port_pullup)(mcp23017_t *dev, mcp23017_port_t port, uint8_t pullup_mask);
+    /**
+     * @brief Configure input polarity inversion for all pins on a port
+     */
+    esp_err_t (*set_port_polarity)(mcp23017_t *dev, mcp23017_port_t port, uint8_t polarity_mask);
 
-/**
- * @brief Set a single output pin HIGH or LOW.
- *
- * Performs bitwise RMW on the olat shadow register, then writes
- * the full updated byte to OLATA or OLATB. Zero I2C reads required.
- *
- * @param dev   Pointer to initialized mcp23017_t context
- * @param port  Target port (MCP23017_PORT_A or MCP23017_PORT_B)
- * @param pin   Pin index within the port (0–7, MCP23017_PIN_MAX)
- * @param value true = drive HIGH, false = drive LOW
- *
- * @return
- * - ESP_OK                : Shadow updated, register written
- * - ESP_ERR_INVALID_STATE : Driver not initialized
- * - ESP_ERR_INVALID_ARG   : Invalid port or pin index out of range
- * - ESP_FAIL              : I2C transaction failed
- */
-esp_err_t mcp23017_write_pin(mcp23017_t *dev, mcp23017_port_t, uint8_t pin, bool value);
+    /**
+     * @brief Configure direction of a single pin (RMW on shadow, zero I2C reads)
+     */
+    esp_err_t (*set_pin_direction)(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin,
+                                   mcp23017_direction_t direction);
+    /**
+     * @brief Set a single output pin HIGH or LOW (RMW on shadow, zero I2C reads)
+     */
+    esp_err_t (*write_pin)(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin, bool value);
+    /**
+     * @brief Read the live logic state of a single pin
+     */
+    esp_err_t (*read_pin)(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin, bool *out_value);
+    /**
+     * @brief Invert the current logic state of a single output pin (XOR on shadow, zero I2C reads)
+     */
+    esp_err_t (*toggle_pin)(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin);
+} mcp23017_driver_t;
 
+// Concrete Driver Access
 /**
- * @brief Read the live logic state of a single pin.
- *
- * Issues a direct I2C read from GPIOA or GPIOB, then extracts
- * the target bit via bitmask. Reflects actual pin state.
- *
- * @param dev       Pointer to initialized mcp23017_t context
- * @param port      Target port (MCP23017_PORT_A or MCP23017_PORT_B)
- * @param pin       Pin index within the port (0–7, MCP23017_PIN_MAX)
- * @param out_value Pointer to bool — true if pin is HIGH, false if LOW
- *
- * @return
- * - ESP_OK                : Read successful, out_value populated
- * - ESP_ERR_INVALID_STATE : Driver not initialized
- * - ESP_ERR_INVALID_ARG   : Invalid port, pin out of range, or out_value NULL
- * - ESP_FAIL              : I2C transaction failed
+ * @brief Return pointer to the singleton concrete driver vTable
  */
-esp_err_t mcp23017_read_pin(mcp23017_t *dev, mcp23017_port_t, uint8_t pin, bool *out_value);
+const mcp23017_driver_t *mcp23017_get_driver(void);
 
-/**
- * @brief Invert the current logic state of a single output pin.
- *
- * Performs bitwise XOR on the olat shadow register bit, then writes
- * the full updated byte to OLATA or OLATB. Zero I2C reads required.
- *
- * @param dev   Pointer to initialized mcp23017_t context
- * @param port  Target port (MCP23017_PORT_A or MCP23017_PORT_B)
- * @param pin   Pin index within the port (0–7, MCP23017_PIN_MAX)
- *
- * @return
- * - ESP_OK                : Shadow updated, register written
- * - ESP_ERR_INVALID_STATE : Driver not initialized
- * - ESP_ERR_INVALID_ARG   : Invalid port or pin index out of range
- * - ESP_FAIL              : I2C transaction failed
- */
-esp_err_t mcp23017_toggle_pin(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin);
+#ifdef __cplusplus
+}
+#endif

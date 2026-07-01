@@ -1,12 +1,20 @@
+/**
+ * @file ads1115.c
+ * @brief ADS1115 16-bit I2C ADC Driver Implementation
+ */
+
 #include "drivers/ic/ads1115.h"
 #include "esp_log.h"
 #include <string.h>
 
 static const char *TAG = "ads1115_driver";
 
-// * Lookup Tables
+/* ---------------------------- LOOKUP TABLES -------------------------- */
 /**
- * Conversion period from SPS to milisecond
+ * @brief Conversion period lookup, indexed by ads1115_data_rate_t.
+ *
+ * Values are the datasheet single-shot conversion time in milliseconds,
+ * rounded up. ADS1115_CONVERSION_MARGIN_MS is added on top before use.
  */
 static const uint32_t s_conversion_to_ms[] = {
     [ADS1115_DR_16SPS] = 63, [ADS1115_DR_32SPS] = 32, [ADS1115_DR_64SPS] = 16,
@@ -14,16 +22,30 @@ static const uint32_t s_conversion_to_ms[] = {
     [ADS1115_DR_860SPS] = 2,
 };
 
-// * Internal Helpers
+/* ---------------------------- PRIVATE HELPER -------------------------- */
 /**
- * Validate enum value maps
+ * @brief Guard: validates that a channel enum value is within range.
+ *
+ * @param channel  Channel value to validate
+ *
+ * @return
+ * - true  : channel is one of ADS1115_CHANNEL_0..3
+ * - false : channel is out of range
  */
 static inline bool ads1115_channel_valid(ads1115_channel_t channel) {
     return (channel >= ADS1115_CHANNEL_0) && (channel <= ADS1115_CHANNEL_3);
 }
 
 /**
- * Build 16-bit config register for single shot conversion
+ * @brief Build the 16-bit config register word for a single-shot conversion.
+ *
+ * Packs OS, MUX, PGA, MODE, DR, and COMP_QUE fields per the ADS1115
+ * config register layout. COMP_QUE is always set to disabled since the
+ * comparator/ALERT function is not used by this driver.
+ *
+ * @param config  Pointer to the per-channel config supplying MUX/PGA/DR fields
+ *
+ * @return 16-bit config register value ready to write to ADS1115_REG_CONFIG
  */
 static uint16_t ads1115_build_config_word(const ads1115_channel_config_t *config) {
     uint16_t word = 0;
@@ -38,7 +60,18 @@ static uint16_t ads1115_build_config_word(const ads1115_channel_config_t *config
 }
 
 /**
- * Write 16-bit value to register pointer
+ * @brief Write a 16-bit value to a single internal ADS1115 register over I2C.
+ *
+ * Constructs a 3-byte payload [reg, MSB, LSB] passed to i2c_bus_write().
+ * The ADS1115 expects big-endian register values.
+ *
+ * @param dev    Pointer to ads1115_dev_t context struct
+ * @param reg    Target register address
+ * @param value  16-bit value to write, MSB first
+ *
+ * @return
+ * - ESP_OK   : Register written successfully
+ * - ESP_FAIL : I2C transaction error (no ACK or bus fault)
  */
 static esp_err_t ads1115_write_register(ads1115_dev_t *dev, uint8_t reg, uint16_t value) {
     uint8_t payload[3] = {
@@ -50,7 +83,18 @@ static esp_err_t ads1115_write_register(ads1115_dev_t *dev, uint8_t reg, uint16_
 }
 
 /**
- * Point to register (MSB first)
+ * @brief Read a 16-bit value from a single internal ADS1115 register over I2C.
+ *
+ * Issues a write (sets the internal register pointer) then a repeated-start
+ * read of 2 bytes, reassembled big-endian into a 16-bit value.
+ *
+ * @param dev        Pointer to ads1115_dev_t context struct
+ * @param reg        Target register address
+ * @param out_value  Pointer to uint16_t that receives the register value
+ *
+ * @return
+ * - ESP_OK   : Register read successfully, out_value populated
+ * - ESP_FAIL : I2C transaction error
  */
 static esp_err_t ads1115_read_register(ads1115_dev_t *dev, uint8_t reg, uint16_t *out_value) {
     uint8_t read_buf[2] = {0};
@@ -63,7 +107,7 @@ static esp_err_t ads1115_read_register(ads1115_dev_t *dev, uint8_t reg, uint16_t
     return ESP_OK;
 }
 
-// * vTable Implementation
+/* ---------------------------- vTable Implementation -------------------------- */
 // 1. Init
 static esp_err_t ads1115_init(ads1115_dev_t *dev, const ads1115_config_t *config) {
     if (dev == NULL || config == NULL || config->bus == NULL)
@@ -81,9 +125,7 @@ static esp_err_t ads1115_init(ads1115_dev_t *dev, const ads1115_config_t *config
     dev->bus = config->bus;
     memcpy(dev->channel_config, config->channel_config, sizeof(dev->channel_config));
 
-    /**
-     * Indepontent safety: restire chip to known state for every init
-     */
+    // Idempotent safety: restore chip to known state on every init
     ret = ads1115_write_register(dev, ADS1115_REG_CONFIG, ADS1115_CONFIG_RESET);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to write reset config: %s", esp_err_to_name(ret));
@@ -105,7 +147,7 @@ static esp_err_t ads1115_read(ads1115_dev_t *dev, ads1115_channel_t channel, uin
     if (!ads1115_channel_valid(channel))
         return ESP_ERR_INVALID_ARG;
 
-    // Channel enum value
+    // Map channel enum to channel_config array index
     const ads1115_channel_config_t *channel_config =
         &dev->channel_config[channel - ADS1115_CHANNEL_0];
 

@@ -1,12 +1,15 @@
+/**
+ * @file i2c_bus.c
+ * @brief Platform I2C Bus Abstraction Layer Implementation
+ */
+
 #include "bus/i2c_bus.h"
 #include "esp_log.h"
 #include <string.h>
 
 static const char *TAG = "i2c_bus";
 
-// * Lifecycle
-
-// Bus Initialization
+/* ---------------------------- LIFECYCLE -------------------------- */
 esp_err_t i2c_bus_init(i2c_bus_t *bus, const i2c_bus_config_t *cfg) {
     if (bus == NULL || cfg == NULL)
         return ESP_ERR_INVALID_ARG;
@@ -38,13 +41,12 @@ esp_err_t i2c_bus_init(i2c_bus_t *bus, const i2c_bus_config_t *cfg) {
     }
 
     bus->initialized = true;
-    ESP_LOGI(TAG, "Bus init OK — port=%d  SDA=%d  SCL=%d  clk=%luHz", cfg->port, cfg->sda_pin,
+    ESP_LOGI(TAG, "Bus init OK, port=%d SDA=%d SCL=%d clk=%luHz", cfg->port, cfg->sda_pin,
              cfg->scl_pin, (unsigned long)cfg->clk_hz);
 
     return ESP_OK;
 }
 
-// Bus De-Initialization
 esp_err_t i2c_bus_deinit(i2c_bus_t *bus) {
     if (bus == NULL || !bus->initialized)
         return ESP_ERR_INVALID_STATE;
@@ -58,7 +60,7 @@ esp_err_t i2c_bus_deinit(i2c_bus_t *bus) {
     return ret;
 }
 
-//* Device Management
+/* ---------------------------- DEVICE MANAGEMENT -------------------------- */
 esp_err_t i2c_bus_add_device(i2c_bus_t *bus, uint8_t addr, uint32_t scl_hz, const char *label,
                              i2c_master_dev_handle_t *out) {
     if (bus == NULL || !bus->initialized || out == NULL)
@@ -81,7 +83,7 @@ esp_err_t i2c_bus_add_device(i2c_bus_t *bus, uint8_t addr, uint32_t scl_hz, cons
         return ret;
     }
 
-    // Register in our device table
+    // Register entry in the device table
     i2c_device_entry_t *entry = &bus->devices[bus->device_count];
     entry->addr               = addr;
     entry->handle             = *out;
@@ -89,13 +91,13 @@ esp_err_t i2c_bus_add_device(i2c_bus_t *bus, uint8_t addr, uint32_t scl_hz, cons
     entry->active             = true;
     bus->device_count++;
 
-    ESP_LOGI(TAG, "Device aded: 0x%02X (%s), - %lu Hz [%d/%d slots]", addr, label ? label : "?",
+    ESP_LOGI(TAG, "Device added: 0x%02X (%s), %lu Hz [%d/%d slots]", addr, label ? label : "?",
              (unsigned long)scl_hz, bus->device_count, I2C_BUS_MAX_DEVICES);
 
     return ESP_OK;
 }
-// * Mutex - Data transfer
-// Bus write operation
+
+/* ---------------------------- DATA TRANSFER -------------------------- */
 esp_err_t i2c_bus_write(i2c_bus_t *bus, i2c_master_dev_handle_t dev, const uint8_t *data,
                         size_t len) {
     if (bus == NULL || !bus->initialized)
@@ -117,7 +119,6 @@ esp_err_t i2c_bus_write(i2c_bus_t *bus, i2c_master_dev_handle_t dev, const uint8
     return ret;
 }
 
-// Bus read operation
 esp_err_t i2c_bus_read(i2c_bus_t *bus, i2c_master_dev_handle_t dev, uint8_t *buf, size_t len) {
     if (bus == NULL || !bus->initialized)
         return ESP_ERR_INVALID_STATE;
@@ -138,7 +139,6 @@ esp_err_t i2c_bus_read(i2c_bus_t *bus, i2c_master_dev_handle_t dev, uint8_t *buf
     return ret;
 }
 
-// Read write cycle
 esp_err_t i2c_bus_write_read(i2c_bus_t *bus, i2c_master_dev_handle_t dev, const uint8_t *wr_data,
                              size_t wr_len, uint8_t *rd_buf, size_t rd_len) {
     if (bus == NULL || !bus->initialized)
@@ -161,7 +161,7 @@ esp_err_t i2c_bus_write_read(i2c_bus_t *bus, i2c_master_dev_handle_t dev, const 
     return ret;
 }
 
-//* Device Diagnostic
+/* ---------------------------- DIAGNOSTIC -------------------------- */
 esp_err_t i2c_bus_scan(i2c_bus_t *bus) {
     if (bus == NULL || !bus->initialized)
         return ESP_ERR_INVALID_STATE;
@@ -175,7 +175,7 @@ esp_err_t i2c_bus_scan(i2c_bus_t *bus) {
         return ESP_ERR_TIMEOUT;
     }
     for (uint8_t addr = 0x03; addr <= 0x77; addr++) {
-        // Try to sending zero bytes for probing
+        // Send zero bytes to probe for a device ACK at this address
         esp_err_t ret = i2c_master_probe(bus->bus_handle, addr, I2C_BUS_TIMEOUT_MS);
 
         if (ret == ESP_OK) {

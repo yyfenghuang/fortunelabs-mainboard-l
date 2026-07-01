@@ -69,8 +69,9 @@ static esp_err_t _mcp23017_read_reg(mcp23017_t *dev, uint8_t reg, uint8_t *out_d
     return ret;
 }
 
-/* ---------------------------- DRIVER LIFECYCLE -------------------------- */
-esp_err_t mcp23017_init(mcp23017_t *dev, const mcp23017_config_t *config) {
+/* ---------------------------- vTable Implementation -------------------------- */
+// 1. Init
+static esp_err_t mcp23017_init(mcp23017_t *dev, const mcp23017_config_t *config) {
     // [1] Validate
     if (dev == NULL || config == NULL || config->bus == NULL) {
         return ESP_ERR_INVALID_ARG;
@@ -86,7 +87,7 @@ esp_err_t mcp23017_init(mcp23017_t *dev, const mcp23017_config_t *config) {
     dev->dev_addr       = config->address;
     dev->is_initialized = false;
 
-    // [3] Register device on bus — acquires the i2c_master_dev_handle_t
+    // [3] Register device on bus. Acquires the i2c_master_dev_handle_t
     //     required by all subsequent i2c_bus_write / i2c_bus_write_read calls.
     esp_err_t ret = i2c_bus_add_device(config->bus, config->address, config->scl_hz, "mcp23017",
                                        &dev->dev_handle);
@@ -137,7 +138,7 @@ esp_err_t mcp23017_init(mcp23017_t *dev, const mcp23017_config_t *config) {
     dev->olat_a = MCP23017_DEFAULT_OLAT;
     dev->olat_b = MCP23017_DEFAULT_OLAT;
 
-    // [6] Mark driver ready — only reachable if every hardware write above succeeded
+    // [6] Mark driver ready. Reached only if every hardware write above succeeded
     dev->is_initialized = true;
 
     ESP_LOGD(TAG, "Init OK: addr=0x%02X dir_a=0x%02X dir_b=0x%02X pullup_a=0x%02X pullup_b=0x%02X",
@@ -146,15 +147,17 @@ esp_err_t mcp23017_init(mcp23017_t *dev, const mcp23017_config_t *config) {
     return ESP_OK;
 }
 
-void mcp23017_deinit(mcp23017_t *dev) {
-
+// 2. De-Initialization
+static void mcp23017_deinit(mcp23017_t *dev) {
     if (dev == NULL) {
         return;
     }
     memset(dev, 0, sizeof(mcp23017_t)); // Driver instance is inert and safe to reinitialize.
 }
-/* ---------------------------- PORT-LEVEL OPERATION -------------------------- */
-esp_err_t mcp23017_set_port_direction(mcp23017_t *dev, mcp23017_port_t port, uint8_t dir_mask) {
+
+// 3. Port-level operations
+static esp_err_t mcp23017_set_port_direction(mcp23017_t *dev, mcp23017_port_t port,
+                                             uint8_t dir_mask) {
     if (!_mcp23017_is_ready(dev))
         return ESP_ERR_INVALID_STATE;
     if (port != MCP23017_PORT_A && port != MCP23017_PORT_B)
@@ -175,7 +178,7 @@ esp_err_t mcp23017_set_port_direction(mcp23017_t *dev, mcp23017_port_t port, uin
     return ESP_OK;
 }
 
-esp_err_t mcp23017_write_port(mcp23017_t *dev, mcp23017_port_t port, uint8_t value) {
+static esp_err_t mcp23017_write_port(mcp23017_t *dev, mcp23017_port_t port, uint8_t value) {
     if (!_mcp23017_is_ready(dev))
         return ESP_ERR_INVALID_STATE;
     if (port != MCP23017_PORT_A && port != MCP23017_PORT_B)
@@ -196,7 +199,7 @@ esp_err_t mcp23017_write_port(mcp23017_t *dev, mcp23017_port_t port, uint8_t val
     return ESP_OK;
 }
 
-esp_err_t mcp23017_read_port(mcp23017_t *dev, mcp23017_port_t port, uint8_t *output_value) {
+static esp_err_t mcp23017_read_port(mcp23017_t *dev, mcp23017_port_t port, uint8_t *output_value) {
     if (!_mcp23017_is_ready(dev))
         return ESP_ERR_INVALID_STATE;
     if (port != MCP23017_PORT_A && port != MCP23017_PORT_B)
@@ -209,7 +212,8 @@ esp_err_t mcp23017_read_port(mcp23017_t *dev, mcp23017_port_t port, uint8_t *out
     return _mcp23017_read_reg(dev, reg, output_value);
 }
 
-esp_err_t mcp23017_set_port_pullup(mcp23017_t *dev, mcp23017_port_t port, uint8_t pullup_mask) {
+static esp_err_t mcp23017_set_port_pullup(mcp23017_t *dev, mcp23017_port_t port,
+                                          uint8_t pullup_mask) {
     if (!_mcp23017_is_ready(dev))
         return ESP_ERR_INVALID_STATE;
     if (port != MCP23017_PORT_A && port != MCP23017_PORT_B)
@@ -219,7 +223,8 @@ esp_err_t mcp23017_set_port_pullup(mcp23017_t *dev, mcp23017_port_t port, uint8_
     return _mcp23017_write_reg(dev, reg, pullup_mask);
 }
 
-esp_err_t mcp23017_set_port_polarity(mcp23017_t *dev, mcp23017_port_t port, uint8_t polarity_mask) {
+static esp_err_t mcp23017_set_port_polarity(mcp23017_t *dev, mcp23017_port_t port,
+                                            uint8_t polarity_mask) {
     if (!_mcp23017_is_ready(dev))
         return ESP_ERR_INVALID_STATE;
     if (port != MCP23017_PORT_A && port != MCP23017_PORT_B)
@@ -229,9 +234,9 @@ esp_err_t mcp23017_set_port_polarity(mcp23017_t *dev, mcp23017_port_t port, uint
     return _mcp23017_write_reg(dev, reg, polarity_mask);
 }
 
-/* ---------------------------- PIN-LEVEL OPERATION -------------------------- */
-esp_err_t mcp23017_set_pin_direction(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin,
-                                     mcp23017_direction_t direction) {
+// 4. Pin-level operations
+static esp_err_t mcp23017_set_pin_direction(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin,
+                                            mcp23017_direction_t direction) {
     if (!_mcp23017_is_ready(dev))
         return ESP_ERR_INVALID_STATE;
     if (port != MCP23017_PORT_A && port != MCP23017_PORT_B)
@@ -244,7 +249,7 @@ esp_err_t mcp23017_set_pin_direction(mcp23017_t *dev, mcp23017_port_t port, uint
     uint8_t *shadow = (port == MCP23017_PORT_A) ? &dev->dir_a : &dev->dir_b;
     uint8_t  reg    = (port == MCP23017_PORT_A) ? MCP23017_REG_IODIRA : MCP23017_REG_IODIRB;
 
-    // RMW on shadow — no I2C read required
+    // RMW on shadow, no I2C read required
     if (direction == MCP23017_DIR_INPUT) {
         *shadow |= (uint8_t)(1u << pin); // set bit   → input
     } else {
@@ -254,7 +259,8 @@ esp_err_t mcp23017_set_pin_direction(mcp23017_t *dev, mcp23017_port_t port, uint
     return _mcp23017_write_reg(dev, reg, *shadow);
 }
 
-esp_err_t mcp23017_write_pin(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin, bool value) {
+static esp_err_t mcp23017_write_pin(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin,
+                                    bool value) {
     if (!_mcp23017_is_ready(dev))
         return ESP_ERR_INVALID_STATE;
     if (port != MCP23017_PORT_A && port != MCP23017_PORT_B)
@@ -265,7 +271,7 @@ esp_err_t mcp23017_write_pin(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin,
     uint8_t *shadow = (port == MCP23017_PORT_A) ? &dev->olat_a : &dev->olat_b;
     uint8_t  reg    = (port == MCP23017_PORT_A) ? MCP23017_REG_OLATA : MCP23017_REG_OLATB;
 
-    // RMW on shadow — no I2C read required
+    // RMW on shadow, no I2C read required
     if (value) {
         *shadow |= (uint8_t)(1u << pin);
     } else {
@@ -275,7 +281,8 @@ esp_err_t mcp23017_write_pin(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin,
     return _mcp23017_write_reg(dev, reg, *shadow);
 }
 
-esp_err_t mcp23017_read_pin(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin, bool *out_value) {
+static esp_err_t mcp23017_read_pin(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin,
+                                   bool *out_value) {
     if (!_mcp23017_is_ready(dev))
         return ESP_ERR_INVALID_STATE;
     if (port != MCP23017_PORT_A && port != MCP23017_PORT_B)
@@ -291,12 +298,12 @@ esp_err_t mcp23017_read_pin(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin, 
     if (ret != ESP_OK)
         return ret;
 
-    // Extract target bit — result is exactly 0 or 1, maps cleanly to bool
+    // Extract target bit. Result is exactly 0 or 1, maps cleanly to bool
     *out_value = ((raw & (uint8_t)(1u << pin)) != 0u);
     return ESP_OK;
 }
 
-esp_err_t mcp23017_toggle_pin(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin) {
+static esp_err_t mcp23017_toggle_pin(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin) {
     if (!_mcp23017_is_ready(dev))
         return ESP_ERR_INVALID_STATE;
     if (port != MCP23017_PORT_A && port != MCP23017_PORT_B)
@@ -307,8 +314,25 @@ esp_err_t mcp23017_toggle_pin(mcp23017_t *dev, mcp23017_port_t port, uint8_t pin
     uint8_t *shadow = (port == MCP23017_PORT_A) ? &dev->olat_a : &dev->olat_b;
     uint8_t  reg    = (port == MCP23017_PORT_A) ? MCP23017_REG_OLATA : MCP23017_REG_OLATB;
 
-    // XOR on shadow — no I2C read required
+    // XOR on shadow, no I2C read required
     *shadow ^= (uint8_t)(1u << pin);
 
     return _mcp23017_write_reg(dev, reg, *shadow);
 }
+
+// * vTable Singleton
+static const mcp23017_driver_t s_mcp23017_driver = {
+    .init               = mcp23017_init,
+    .deinit             = mcp23017_deinit,
+    .set_port_direction = mcp23017_set_port_direction,
+    .write_port         = mcp23017_write_port,
+    .read_port          = mcp23017_read_port,
+    .set_port_pullup    = mcp23017_set_port_pullup,
+    .set_port_polarity  = mcp23017_set_port_polarity,
+    .set_pin_direction  = mcp23017_set_pin_direction,
+    .write_pin          = mcp23017_write_pin,
+    .read_pin           = mcp23017_read_pin,
+    .toggle_pin         = mcp23017_toggle_pin,
+};
+
+const mcp23017_driver_t *mcp23017_get_driver(void) { return &s_mcp23017_driver; }
