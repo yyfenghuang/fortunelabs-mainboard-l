@@ -292,7 +292,7 @@ See [`docs/sop/git_sop.md`](../docs/sop/git_sop.md).*
 | Aug 2026 | Driver init degrades, it does not abort | A missing I²C device logs and skips the dependent task. Aborting made Phase 1 untestable bare, which is the condition the phase is specified against |
 | ~~May 2026~~ | ~~12V→5V: MP2393 (3A)~~ | Superseded 2026-07-29 by the single-stage TPS62162. Neither MPS part is on the board. See the ADR |
 | Jul 2026 | 12V→3.3V: TPS62162DSG, single stage. No 5V rail | MPS parts could not be sourced. A sourcing decision, not a technical one. Nothing on the board needs 5V: relays run from 12V through J5. [`docs/adr/2026-07-29-power-rail-is-tps62162.md`](../docs/adr/2026-07-29-power-rail-is-tps62162.md) |
-| Aug 2026 | 4-layer PCB: Top / GND / Power / Bottom | Taken on cost asymmetry, not on a measurement. The RF case does not apply: U201 is a module with its own antenna, so no net on the board needs 50Ω. Being wrong about 2 layers is found at bring-up and costs a re-layout; being wrong about 4 costs money per spin and nothing else. [`docs/adr/2026-08-23-pcb-layer-count.md`](../docs/adr/2026-08-23-pcb-layer-count.md) |
+| Aug 2026 | 4-layer PCB: Top / GND / Power / Bottom | Being wrong about 2 layers is found at bring-up and costs a re-layout; being wrong about 4 costs money per spin and nothing else. No net needs 50Ω: U201 is a module with its own antenna. [`docs/adr/2026-08-23-pcb-layer-count.md`](../docs/adr/2026-08-23-pcb-layer-count.md) |
 
 ---
 
