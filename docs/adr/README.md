@@ -40,6 +40,11 @@ new file naming what survives and what changes. See
   records the single-stage TPS62162 3.3 V rail that replaced the two-stage
   MP2393→MP2388 pair, on sourcing rather than technical grounds, and states
   that the board has no 5 V rail and needs none.
+- [`2026-08-23-pcb-layer-count.md`](./2026-08-23-pcb-layer-count.md) takes the
+  first spin to four layers, Top / GND / Power / Bottom. Records that the RF
+  argument Phase 8 was written on does not apply, U201 being a module with its
+  own antenna, and that the decision therefore rests on cost asymmetry rather
+  than on a measurement.
 
 ## Owed
 
