@@ -14,15 +14,6 @@ the Decision Log carried the row above at TBD, while Phase 8 already opened with
 *"4-layer stackup: Top / GND (L2) / Power (L3) / Bottom"*. Layout is where
 reversing this costs the most, so it is settled here first.
 
-Read from
-`hardware/fortunelabs_mainboard_v0/fortunelabs_mainboard_v0.kicad_pcb` rather
-than assumed, the board today is:
-
-- **Two copper layers**, `F.Cu` and `B.Cu`. No `stackup` block, so the fab
-  default applies. 1.6 mm finished.
-- **116 footprints placed, zero track segments.** Placement is done; routing has
-  not started. Changing the layer count now costs a re-pour and nothing else.
-
 Two properties of the design bear on the choice:
 
 - **One switching regulator.** U101, TPS62162DSG, with L101 at 2.2 µH, per
@@ -34,8 +25,8 @@ Two properties of the design bear on the choice:
   50 Ω target.
 
 The second point matters because it removes the argument Phase 8 was written
-on. What is left is the switcher return path, `+3V3` distribution to 39 nodes
-across 116 footprints, and routing headroom.
+on. What is left is the switcher return path, `+3V3` distribution to 39 nodes,
+and routing headroom.
 
 ## Alternatives
 
@@ -91,15 +82,13 @@ money per spin and nothing else.
 
 ## Consequences
 
-- **The `.kicad_pcb` declares two copper layers and must be set to four** in
-  Board Setup before routing starts.
+- **The board file must be set to four copper layers** in Board Setup before
+  routing starts.
 - **The module antenna needs a keepout spanning all four copper layers.** The
-  `RF_Module:ESP32-S3-WROOM-2` footprint as placed defines no copper keepout
-  over its antenna. On two layers the pours were placed by hand and the omission
-  was survivable; with L2 and L3 poured board-wide, copper lands under the
-  antenna unless a keepout is drawn and the module set at the board edge. **DRC
-  does not report this**, so it is owed an issue before the Phase 8 DRC gate is
-  opened.
+  `RF_Module:ESP32-S3-WROOM-2` footprint carries no copper keepout over its
+  antenna, so with L2 and L3 poured board-wide, copper lands under the antenna
+  unless a keepout is drawn and the module set at the board edge. **DRC does not
+  report this**, so it is owed an issue before the Phase 8 DRC gate is opened.
 - **The Phase 8 line *"50Ω RF trace impedance: calculator, verified against the
   vendor stackup"* grades a net this board does not have** and should be struck
   or re-scoped rather than ticked. Not edited here: a specification change and
